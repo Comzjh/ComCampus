@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">XMU Course</string>
+    <string name="widget_today_course_name">今日课程</string>
+    <string name="widget_next_course_name">下一节课</string>
+    <string name="widget_today_course_description">在桌面查看今天的课程、时间和地点</string>
+    <string name="widget_next_course_description">在桌面查看下一节课和倒计时</string>
+</resources>

@@ -1,0 +1,33 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/app/build
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+
+.analysis/
+/_analysis/
+*.zip
+
+# Local exports, captured pages and analysis artifacts
+/output/
+/xmu_course_download/
+debug_import.html
+*.mht
+
+# Local development notes (keep out of the public repository)
+/CODEX_PROMPT.md
+/findings.md
+/progress.md
+/task_plan.md
+
+# Release signing credentials (never commit to GitHub)
+*.jks
+*.keystore
+keystore.properties
+

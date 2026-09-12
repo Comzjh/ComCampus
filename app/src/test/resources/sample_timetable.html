@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<!-- saved from url=(0251)https://jw.xmu.edu.cn/gsapp/sys/wdkbapp/*default/index.do?t_s=0&EMAP_LANG=zh&THEME=cherry&amp_sec_version_=1&gid_=SANITIZED#/xskcb -->
+<html lang="zh-CN" class=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+
+<!-- commomlib include jquery.js jquery.nicescroll.js jquery.fileupload.js director.min.js hogan.min.js lodash.min.js globalize.js-->
+<script src="./我的课表app_files/commonlib.js.下载"></script>
+<!-- 此处可以放置第三方库-->
+<script>
+	var pageMeta = {"models":[],"routes":{},"datas":{},"params":{"USERID":"STUDENT_ID","ROLEID":"20210910231147678"}};
+	var userId = pageMeta.params.USERID;
+    var roleId = pageMeta.params.ROLEID;
+    var resServer = "https://jw-res.xmu.edu.cn/1.8.1_TR30";
+	var todayDate = "2026-09-12";
+	var dataRoleId = "xs";
+</script>
+
+
+
+
+
+
+
+
+
+
+<script>
+(function() {
+	window.WIS_CONFIG = {
+		PATH: "/gsapp",
+		APPID: "4979568947762216",
+		APPNAME: "wdkbapp"
+	};
+	
+	var resServer = "https://jw-res.xmu.edu.cn/1.8.1_TR30";
+	window.roleId = "20210910231147678";
+	var path = window.location.href;
+	var end = path.indexOf('/sys/');
+	var context_path = path.substring(0, end);
+	var appname = WIS_CONFIG.APPNAME;
+	var app_path = context_path + "/sys/" + appname;
+	try{
+		loadFrJs = true;
+	}catch(e){
+		loadFrJs = true;
+	}
+	var config = {
+		
+		"APP_TITLE" : "我的课表app",
+			
+		"APP_VERSION": "1789120558591",
+
+		/*
+		 * 前端部门开发模式
+		 */
+		"FE_DEBUG_MODE": false,
+
+		/*
+		 * 业务线开发模式，转测时置false
+		 */
+		"DEBUG_MODE": true,
+
+		/*
+		 * 设置BH组件使用1.2版本
+		 */
+		"BH_VERSION": '1.2',
+
+		/*
+		 * 资源服务器地址
+		 */
+		"RESOURCE_SERVER": resServer,
+
+		/*
+		 * 主题 blue purple
+		 */
+		"THEME": "blue",
+
+		/*
+		 * APP默认路由
+		 */
+		"APP_ENTRY": "",
+		
+		/*
+		 * modules路径
+		 */
+		"MODULE_PATH": app_path + '/modules/',
+
+		/*
+		 * 上下文全路径（样例：https://ampdx.wisedu.com/gsapp"）
+		 */
+		"CONTEXT_PATH": context_path,
+
+		/*
+		 * path根路径
+		 */
+		"PATH": context_path + "/", //http://localhost:18080/emap
+
+		/*
+		 * 应用底部说明文本
+		 */
+		"FOOTER_TEXT": "",
+
+		/*
+		 * 服务器端生成配置API(API_BASE_PATH目录下) @example "/config.do"
+		 * ./mock/serverconfig.json
+		 */
+		"SERVER_CONFIG_API": context_path + "/sys/funauthapp/api/getAppConfig/" + WIS_CONFIG.APPNAME + "-" + WIS_CONFIG.APPID + ".do",
+
+		/**
+		 * 行为数据采集开启
+		 */
+		"ISSENTRY": true,
+
+		/**
+		 * 外层框架初始化结束，进入模块前执行的回调
+		 */
+		"AFTER_FRAMEWORK_INIT": function() {
+			// $('[bh-header-role="bhHeader"] .bh-headerBar-imgBlock').after('<span style="float:right;color:white;line-height:28px;font-weight:bold;padding:0 4px;font-size:14px;">STUDENT_NAME</span>');
+		    // var	width = parseInt($(".bh-headerBar-menu").css("width").replace("px",''))+62;
+		    // $(".bh-headerBar-menu").css({"width": width+'px'});
+			// 查询多选下拉框添加“空”选项
+			WIS_EMAP_CONFIG.showBlankOptionInSearch = true;
+			WIS_EMAP_CONFIG.xssSafeRender = true;
+			WIS_EMAP_CONFIG['emapdatatable.fxss'] = true;
+			WIS_EMAP_CONFIG.setOptions({
+				//下拉多选框增加全选
+				dropDownOneKeySelect : true,
+				//全选文字内容修改
+				switchSelectAllText: true
+			});
+			// 设置emap富文本框的toolbar属性（显示的按钮）
+			WIS_EMAP_CONFIG.emapEditor = {};
+			WIS_EMAP_CONFIG.emapEditor.toolbar = [
+				['font', ['bold', 'underline', 'italic', 'clear']],
+				['fontname', ['fontname']],
+				['fontsize', ['fontsize']],
+				['color', ['color']],
+				['para', ['ul', 'ol', 'paragraph']],
+				['table', ['table']],
+				['insert', ['hr']]
+			];
+		},
+
+		/**
+		 * 头部配置
+		 */
+		"HEADER": {
+			"dropMenuCallback": function(item) {
+				if (item.id == pageMeta.params.ROLEID) {
+					return false;
+				}
+				var url = context_path + "/sys/funauthapp/api/changeAppRole/" + WIS_CONFIG.APPNAME + "/" + item.id + ".do";
+				$.ajax({
+					url: url,
+					type: 'post',
+					data: 'selectedRoleId=' + item.id,
+					async: false,
+					error: function() {
+						$.bhDialog({
+							title: '切换失败',
+							iconType: 'warning'
+						});
+					},
+					success: function(data) {
+						if (data != "" && data != null) {
+							location.href = context_path + "/sys/" + WIS_CONFIG.APPNAME + "/*default/index.do";
+						}
+					}
+				});
+			},
+			"logo": resServer + "/images/logo.png",
+			"icons": ["icon-apps"],
+			"userInfo": {
+	            "image": "/gsapp/sys/gglglyy/public/images/user.png",
+	            "info": [
+	                "STUDENT_ID",
+	                "STUDENT_NAME"
+	            ],
+	            "logoutHref": "https://jw.xmu.edu.cn/gsapp/sys/yjsrzfwapp/logout/forceLogoutCas.do?originUrl="+encodeURIComponent(location.href)
+	        }
+			//"userImage": resServer + "/images/user.png"
+		}
+	};
+	
+	window.WIS_PUBLIC_CONFIG = config;
+}());
+</script>
+<script src="./我的课表app_files/head.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/includeFiles.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/getAllLabels.do"></script><link type="text/css" rel="stylesheet" href="./我的课表app_files/zero-plugin.min.css"><script language="javascript" type="text/javascript" src="./我的课表app_files/zero-plugin.min.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/ggFunctions.js.下载"></script><script language="javascript" src="./我的课表app_files/fr.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/fieldCascade.js.下载"></script><link type="text/css" rel="stylesheet" href="./我的课表app_files/qs.css"><script language="javascript" type="text/javascript" src="./我的课表app_files/qscore.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/qs.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/jquery.guide.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/jquery.stamper.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/multiple-select.js.下载"></script><link type="text/css" rel="stylesheet" href="./我的课表app_files/multiple-select.css"><script language="javascript" type="text/javascript" src="./我的课表app_files/funExtend.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/emapAvatarUpload1.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/jquery.qrcode.min.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/testUtil.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/ydlc.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/check.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/zeroImporter2.js.下载"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/goldenfinger.js.下载"></script><script src="./我的课表app_files/gfbtn.js.下载" language="javascript" type="text/javascript"></script><script language="javascript" type="text/javascript" src="./我的课表app_files/auditFlow.js.下载"></script>
+<script src="./我的课表app_files/jquery.textareaCounter.plugin.js.下载"></script>
+<link rel="stylesheet" href="./我的课表app_files/summernote-bs3.min.css">
+<link rel="stylesheet" href="./我的课表app_files/summernote.css">
+
+<link rel="stylesheet" type="text/css" href="./我的课表app_files/manualTimeTable.css">
+<link rel="stylesheet" type="text/css" href="./我的课表app_files/weekUnitTable.css">
+
+<script src="./我的课表app_files/bootstrap.min.js.下载"></script>
+<script src="./我的课表app_files/summernote.js.下载"></script>
+
+<script src="./我的课表app_files/appcore-min.js.下载"></script>
+<script src="./我的课表app_files/init.js.下载"></script>
+<script src="./我的课表app_files/logger.js.下载"></script>
+<script src="./我的课表app_files/jquery.PrintArea.js.下载"></script>
+
+<!-- package.js 转测时开放（执行gulp buildapp 命令可以生成该文件）-->
+<!-- <script type="text/javascript" src="./dest/package.js"></script> -->
+<style type="text/css">.zeromodal-scroll-margin{margin-right:12px;}</style><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="config" src="./我的课表app_files/config.js.下载"></script><style>.app-ajax-loading .bh-loader-icon-line-border{border: 0px solid #ddd;box-shadow:none;}.app-ajax-loading{position:fixed;z-index:30000;}.app-loading{position:absolute;opacity:0;top:150px;left:-75px;margin-left:50%;z-index:-1;text-align:center}.app-loading-show{z-index:9999;animation:fade-in;animation-duration:0.5s;-webkit-animation:fade-in 0.5s;opacity:1;}@keyframes fade-in{0%{opacity:0}50%{opacity:.4}100%{opacity:1}}@-webkit-keyframes fade-in{0%{opacity:0}50%{opacity:.4}100%{opacity:1}}.spinner>div{width:30px;height:30px;background-color:#4DAAF5;border-radius:100%;display:inline-block;-webkit-animation:bouncedelay 1.4s infinite ease-in-out;animation:bouncedelay 1.4s infinite ease-in-out;-webkit-animation-fill-mode:both;animation-fill-mode:both}.spinner .bounce1{-webkit-animation-delay:-.32s;animation-delay:-.32s}.spinner .bounce2{-webkit-animation-delay:-.16s;animation-delay:-.16s}@-webkit-keyframes bouncedelay{0%,100%,80%{-webkit-transform:scale(0)}40%{-webkit-transform:scale(1)}}@keyframes bouncedelay{0%,100%,80%{transform:scale(0);-webkit-transform:scale(0)}40%{transform:scale(1);-webkit-transform:scale(1)}}</style><title>我的课表app</title><link type="text/css" rel="stylesheet" href="./我的课表app_files/iconfont.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/iconfont(1).css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/bh-1.2.min.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/bh-scenes-1.2.min.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/animate.min.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/layer.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/base.css"><link type="text/css" rel="stylesheet" href="./我的课表app_files/style.css"><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/bh_utils.js?rv=100003" src="./我的课表app_files/bh_utils.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/amp/ampPlugins.min.js?rv=100003" src="./我的课表app_files/ampPlugins.min.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/jqwidget/jqxwidget.min.js?rv=100003" src="./我的课表app_files/jqxwidget.min.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/bhtc/moment/min/moment-with-locales.min.js?rv=100003" src="./我的课表app_files/moment-with-locales.min.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/bhtc/sortable/Sortable.js?rv=100003" src="./我的课表app_files/Sortable.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/bh-1.2.min.js?rv=100003" src="./我的课表app_files/bh-1.2.min.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/emap-1.2.js?rv=100003" src="./我的课表app_files/emap-1.2.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="https://jw-res.xmu.edu.cn/1.8.1_TR30/fe_components/sentry/sentry.min.js?rv=100003" src="./我的课表app_files/sentry.min.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/xskcb" src="./我的课表app_files/xskcb.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/xskcbBS" src="./我的课表app_files/xskcbBS.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/../../public/js/mergeTable" src="./我的课表app_files/mergeTable.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/course" src="./我的课表app_files/course.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/courseBS" src="./我的课表app_files/courseBS.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jccx/jccx" src="./我的课表app_files/jccx.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jxrl/jxrl" src="./我的课表app_files/jxrl.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jxdg/jxdg" src="./我的课表app_files/jxdg.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jxrl/jxrlBS" src="./我的课表app_files/jxrlBS.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jccx/jccxBS" src="./我的课表app_files/jccxBS.js.下载"></script><script type="text/javascript" charset="utf-8" async="" data-requirecontext="_" data-requiremodule="modules/xskcb/course/jxdg/jxdgBS" src="./我的课表app_files/jxdgBS.js.下载"></script></head>
+
+<body style="overflow-y: scroll;"><header bh-header-guid="714d9c12-d9f6-80f7-b7ab-2d217f639060"><header class="bh-header sc-animated" bh-header-role="bhHeader"><div class="bh-headerBar"><div class="bh-headerBar-content bh-clearfix"><div style="display: none;" class="bh-headerBar-asideMenu" bh-header-role="bhAsideNavIcon"><i class="iconfont icon-menu"></i></div><div class="bh-headerBar-logo"><img src="./我的课表app_files/logo.png"></div><div class="bh-headerBar-title">我的课表app</div><div class="bh-headerBar-menu" style="width: 809px;"><div class="bh-headerBar-imgBlock"><img src="./我的课表app_files/user.png" bh-header-role="bhHeaderUserInfoIcon"></div><div class="bh-headerBar-roleSwitch" bh-header-role="roleSwitch">本科学生组</div><div class="bh-headerBar-nav-more" style=""><i class="iconfont icon-keyboardcontrol"></i></div><div class="bh-headerBar-navigate " style="width: 609px;"><a class="bh-hide" href="https://jw.xmu.edu.cn/gsapp/sys/wdkbapp/*default/index.do?t_s=0&amp;EMAP_LANG=zh&amp;THEME=cherry&amp;amp_sec_version_=1&amp;gid_=SANITIZED#/xskcb" bh-header-role="nav-177da2bc-7489-6e3a-db35-292e03f74b91" style=""><div class="bh-headerBar-nav-item bh-active" title="学生课程表">学生课程表<i class="iconfont icon-keyboardarrowdown" style="display:none"></i></div><b class="bh-headerBar-nav-item-tip"></b></a><div class="bh-headerBar-nav-bar bh-single-animate" style="left: -1065.8px; width: 0px;"></div><div class="bh-headerBar-navBar-cover"></div></div></div></div></div></header><header class="bh-header-mini sc-animated" bh-header-role="bhHeaderMini"><div class="bh-headerBar"><div class="bh-headerBar-content bh-clearfix"><div style="display: none;" class="bh-headerBar-asideMenu" bh-header-role="bhAsideNavIcon"><i class="iconfont icon-menu"></i></div><div class="bh-headerBar-logo"><img src="./我的课表app_files/logo.png"></div><div class="bh-headerBar-title">我的课表app</div><div class="bh-headerBar-menu" style="width: 809px;"><div class="bh-headerBar-imgBlock"><img src="./我的课表app_files/user.png" bh-header-role="bhHeaderUserInfoIcon"></div><div class="bh-headerBar-roleSwitch" bh-header-role="roleSwitch">本科学生组</div><div class="bh-headerBar-nav-more"><i class="iconfont icon-keyboardcontrol"></i></div><div class="bh-headerBar-navigate " style="width: 609px;"><a class="bh-hide" href="https://jw.xmu.edu.cn/gsapp/sys/wdkbapp/*default/index.do?t_s=0&amp;EMAP_LANG=zh&amp;THEME=cherry&amp;amp_sec_version_=1&amp;gid_=SANITIZED#/xskcb" bh-header-role="nav-177da2bc-7489-6e3a-db35-292e03f74b91" style=""><div class="bh-headerBar-nav-item bh-active" title="学生课程表">学生课程表<i class="iconfont icon-keyboardarrowdown" style="display:none"></i></div><b class="bh-headerBar-nav-item-tip"></b></a><div class="bh-headerBar-nav-bar bh-single-animate" style="left: -1073.8px; width: 0px;"></div><div class="bh-headerBar-navBar-cover"></div></div></div></div></div></header><header class="bh-header-bg sc-animated"></header></header><main><article bh-layout-role="single" style="min-height: 1006px;">
+	<h2>学生课程表</h2>
+	<section>
+		<div id="kbbzsmDiv" class="bh-color-danger bh-bg-info-5" style="display:none;margin-bottom:12px;font-size:14px;line-height:24px;padding:4px;"></div>
+
+		<div id="kbckTop">
+			<div id="xsXx" style="margin-bottom:12px"><div>		<select id="myXnxqSelect" style="width:200px"><option value="20261">2026-2027学年 秋季学期</option><option value="20253">2025-2026学年 夏季学期</option><option value="20252">2025-2026学年 春季学期</option><option value="20251">2025-2026学年 秋季学期</option><option value="20243">2024-2025学年 夏季学期</option><option value="20242">2024-2025学年 春季学期</option><option value="20241">2024-2025学年 秋季学期</option><option value="20233">2023-2024学年 夏季学期</option><option value="20232">2023-2024学年 春季学期</option><option value="20231">2023-2024学年 秋季学期</option><option value="20223">2022-2023学年 夏季学期</option><option value="20222">2022-2023学年 春季学期</option><option value="20221">2022-2023学年 秋季学期</option><option value="20213">2021-2022学年 夏季学期</option><option value="20212">2021-2022学年 春季学期</option><option value="20211">2021-2022学年 秋季学期</option><option value="20203">2020-2021学年 夏季学期</option><option value="20202">2020-2021学年 春季学期</option></select>		<a href="javascript:void(0);" class="bh-btn bh-btn-primary" data-action="切换课表视角">查看周课表</a>		<a href="javascript:void(0);" class="bh-btn bh-btn-default" data-action="打印学生课表">打印</a>		<p id="xsxxprint" style="float:right;">院系：化学化工学院&nbsp;&nbsp;&nbsp;学号：STUDENT_ID&nbsp;&nbsp;&nbsp;姓名：STUDENT_NAME</p>	 </div></div>
+			<div id="kbckTop-content-container">
+				<div id="changeZcDiv" class="zcContainer" style="display: none;">
+					<img src="./我的课表app_files/left.png" alt="左" class="direction" data-type="left" data-actio="切换周次">
+					<div>第 <span class="zcmc"></span> 周</div>
+					<img src="./我的课表app_files/right.png" alt="左" class="direction" data-type="right" data-actio="切换周次">
+				</div>
+				<div id="kbckTop-content"><div style="float: right;"><label class="bh-tag bh-tag-primary" style="background: #faac8f;margin-right: 2px;">本</label><label class="bh-tag bh-tag-primary" style="background: #fdcf93;margin-right: 2px;">研</label></div><table id="jsTbl_01" class="mtt_table1" style="width:100%;margin-bottom:12px;">	<tbody><tr>		<td class="jqx-grid-column-header" rowspan="1">节次/星期</td>		<td class="jqx-grid-column-header" rowspan="1">时间</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期日</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期一</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期二</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期三</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期四</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期五</td>	<td style="width:12.571428571428571%" class="jqx-grid-column-header" rowspan="1">星期六</td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第1节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">08:00~08:45</td>	<td jcxq="1-7" jc="1" xq="7" rowspan="1"></td>	<td jcxq="1-1" jc="1" xq="1" rowspan="1"></td>	<td jcxq="1-2" jc="1" xq="2" rowspan="4"><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-2周</div>		<div>大学物理实验(08)</div>		<div>陈婷</div>	<div>海韵教学楼104</div>	 </div><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>3-16周</div>		<div>大学物理实验(08)</div>		<div>吕雪芹,陈晓航,李金钗,程唤龄,陈婷,曹昕睿,李翔,乐世敏,王玲,李静</div>	 </div></td>	<td jcxq="1-3" jc="1" xq="3" rowspan="4"><div class="arrage" data-bjdm="20262027113010001003404" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>基础化学实验（二）(04)</div>		<div>龙浩,刘艳</div>	 </div></td>	<td jcxq="1-4" jc="1" xq="4" rowspan="1"></td>	<td jcxq="1-5" jc="1" xq="5" rowspan="1"></td>	<td jcxq="1-6" jc="1" xq="6" rowspan="1"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第2节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">08:55~09:40</td>	<td jcxq="2-7" jc="2" xq="7"></td>	<td jcxq="2-1" jc="2" xq="1"></td>	<td jcxq="2-2" jc="2" xq="2" style="display: none;"><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-2周</div>		<div>大学物理实验(08)</div>		<div>陈婷</div>	<div>海韵教学楼104</div>	 </div><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>3-16周</div>		<div>大学物理实验(08)</div>		<div>吕雪芹,陈晓航,李金钗,程唤龄,陈婷,曹昕睿,李翔,乐世敏,王玲,李静</div>	 </div></td>	<td jcxq="2-3" jc="2" xq="3" style="display: none;"><div class="arrage" data-bjdm="20262027113010001003404" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>基础化学实验（二）(04)</div>		<div>龙浩,刘艳</div>	 </div></td>	<td jcxq="2-4" jc="2" xq="4"></td>	<td jcxq="2-5" jc="2" xq="5"></td>	<td jcxq="2-6" jc="2" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第3节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">10:10~10:55</td>	<td jcxq="3-7" jc="3" xq="7"></td>	<td jcxq="3-1" jc="3" xq="1"></td>	<td jcxq="3-2" jc="3" xq="2" style="display: none;"><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-2周</div>		<div>大学物理实验(08)</div>		<div>陈婷</div>	<div>海韵教学楼104</div>	 </div><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>3-16周</div>		<div>大学物理实验(08)</div>		<div>吕雪芹,陈晓航,李金钗,程唤龄,陈婷,曹昕睿,李翔,乐世敏,王玲,李静</div>	 </div></td>	<td jcxq="3-3" jc="3" xq="3" style="display: none;"><div class="arrage" data-bjdm="20262027113010001003404" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>基础化学实验（二）(04)</div>		<div>龙浩,刘艳</div>	 </div></td>	<td jcxq="3-4" jc="3" xq="4" rowspan="2"><div class="arrage" data-bjdm="202620271U1030200039601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>化学中的普通物理学（下）(01)</div>		<div>詹华瀚</div>	<div>庄汉水楼（南强二）105</div>	 </div></td>	<td jcxq="3-5" jc="3" xq="5" rowspan="2"><div class="arrage" data-bjdm="20262027113010001003002" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-15单周</div>		<div>有机化学（一）(02)</div>		<div>黄培强,霍浩华</div>	<div>庄汉水楼（南强二）410</div>	 </div></td>	<td jcxq="3-6" jc="3" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第4节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">11:05~11:50</td>	<td jcxq="4-7" jc="4" xq="7"></td>	<td jcxq="4-1" jc="4" xq="1"></td>	<td jcxq="4-2" jc="4" xq="2" style="display: none;"><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-2周</div>		<div>大学物理实验(08)</div>		<div>陈婷</div>	<div>海韵教学楼104</div>	 </div><div class="arrage" data-bjdm="20262027113009001008508" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>3-16周</div>		<div>大学物理实验(08)</div>		<div>吕雪芹,陈晓航,李金钗,程唤龄,陈婷,曹昕睿,李翔,乐世敏,王玲,李静</div>	 </div></td>	<td jcxq="4-3" jc="4" xq="3" style="display: none;"><div class="arrage" data-bjdm="20262027113010001003404" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>基础化学实验（二）(04)</div>		<div>龙浩,刘艳</div>	 </div></td>	<td jcxq="4-4" jc="4" xq="4" style="display: none;"><div class="arrage" data-bjdm="202620271U1030200039601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>化学中的普通物理学（下）(01)</div>		<div>詹华瀚</div>	<div>庄汉水楼（南强二）105</div>	 </div></td>	<td jcxq="4-5" jc="4" xq="5" style="display: none;"><div class="arrage" data-bjdm="20262027113010001003002" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-15单周</div>		<div>有机化学（一）(02)</div>		<div>黄培强,霍浩华</div>	<div>庄汉水楼（南强二）410</div>	 </div></td>	<td jcxq="4-6" jc="4" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">中午</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">12:00~14:00</td>	<td jcxq="12-7" jc="12" xq="7"></td>	<td jcxq="12-1" jc="12" xq="1"></td>	<td jcxq="12-2" jc="12" xq="2" rowspan="1"></td>	<td jcxq="12-3" jc="12" xq="3" rowspan="1"></td>	<td jcxq="12-4" jc="12" xq="4" rowspan="1"></td>	<td jcxq="12-5" jc="12" xq="5" rowspan="1"></td>	<td jcxq="12-6" jc="12" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第5节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">14:30~15:15</td>	<td jcxq="5-7" jc="5" xq="7"></td>	<td jcxq="5-1" jc="5" xq="1" rowspan="2"><div class="arrage" data-bjdm="20262027113010001008102" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>物理化学（一）(02)</div>		<div>曹阳,颜佳伟</div>	<div>庄汉水楼（南强二）209</div>	 </div></td>	<td jcxq="5-2" jc="5" xq="2" rowspan="2"><div class="arrage" data-bjdm="202620271U1030200039601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>化学中的普通物理学（下）(01)</div>		<div>詹华瀚</div>	<div>庄汉水楼（南强二）105</div>	 </div></td>	<td jcxq="5-3" jc="5" xq="3" rowspan="2"><div class="arrage" data-bjdm="20262027113010001003002" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>有机化学（一）(02)</div>		<div>黄培强,霍浩华</div>	<div>庄汉水楼（南强二）410</div>	 </div></td>	<td jcxq="5-4" jc="5" xq="4" rowspan="2"><div class="arrage" data-bjdm="202620271U1030160000414" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-15单周</div>		<div>“四史”专题研究(14)</div>		<div>王玲伟</div>	<div>集美二104</div>	 </div></td>	<td jcxq="5-5" jc="5" xq="5" rowspan="2"><div class="arrage" data-bjdm="202620271U1030160000601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>毛泽东思想和中国特色社会主义理论体系概论(01)</div>		<div>冯霞</div>	<div>祖营楼（嘉庚四）103</div>	 </div></td>	<td jcxq="5-6" jc="5" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第6节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">15:25~16:10</td>	<td jcxq="6-7" jc="6" xq="7"></td>	<td jcxq="6-1" jc="6" xq="1" style="display: none;"><div class="arrage" data-bjdm="20262027113010001008102" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>物理化学（一）(02)</div>		<div>曹阳,颜佳伟</div>	<div>庄汉水楼（南强二）209</div>	 </div></td>	<td jcxq="6-2" jc="6" xq="2" style="display: none;"><div class="arrage" data-bjdm="202620271U1030200039601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>化学中的普通物理学（下）(01)</div>		<div>詹华瀚</div>	<div>庄汉水楼（南强二）105</div>	 </div></td>	<td jcxq="6-3" jc="6" xq="3" style="display: none;"><div class="arrage" data-bjdm="20262027113010001003002" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>有机化学（一）(02)</div>		<div>黄培强,霍浩华</div>	<div>庄汉水楼（南强二）410</div>	 </div></td>	<td jcxq="6-4" jc="6" xq="4" style="display: none;"><div class="arrage" data-bjdm="202620271U1030160000414" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-15单周</div>		<div>“四史”专题研究(14)</div>		<div>王玲伟</div>	<div>集美二104</div>	 </div></td>	<td jcxq="6-5" jc="6" xq="5" style="display: none;"><div class="arrage" data-bjdm="202620271U1030160000601" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-16周</div>		<div>毛泽东思想和中国特色社会主义理论体系概论(01)</div>		<div>冯霞</div>	<div>祖营楼（嘉庚四）103</div>	 </div></td>	<td jcxq="6-6" jc="6" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第7节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">16:40~17:25</td>	<td jcxq="7-7" jc="7" xq="7"></td>	<td jcxq="7-1" jc="7" xq="1" rowspan="2"><div class="arrage" data-bjdm="20262027119034000000817" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-7单周</div>		<div>形势与政策（3）(17)</div>		<div>杜超,徐玮辰,龚巧彬</div>	<div>钟铭选楼（嘉庚五）102</div>	 </div></td>	<td jcxq="7-2" jc="7" xq="2" rowspan="2"><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-3单周,6,8-9,11-13单周,15-16周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>庄汉水楼（南强二）105</div>	 </div><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2,4-5,7,10-14双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	 </div></td>	<td jcxq="7-3" jc="7" xq="3" rowspan="1"></td>	<td jcxq="7-4" jc="7" xq="4" rowspan="2"><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>钟铭选楼（嘉庚五）603</div>	 </div><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>钟铭选楼（嘉庚五）605</div>	 </div></td>	<td jcxq="7-5" jc="7" xq="5" rowspan="1"></td>	<td jcxq="7-6" jc="7" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第8节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">17:35~18:20</td>	<td jcxq="8-7" jc="8" xq="7"></td>	<td jcxq="8-1" jc="8" xq="1" style="display: none;"><div class="arrage" data-bjdm="20262027119034000000817" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-7单周</div>		<div>形势与政策（3）(17)</div>		<div>杜超,徐玮辰,龚巧彬</div>	<div>钟铭选楼（嘉庚五）102</div>	 </div></td>	<td jcxq="8-2" jc="8" xq="2" style="display: none;"><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>1-3单周,6,8-9,11-13单周,15-16周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>庄汉水楼（南强二）105</div>	 </div><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2,4-5,7,10-14双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	 </div></td>	<td jcxq="8-3" jc="8" xq="3"></td>	<td jcxq="8-4" jc="8" xq="4" style="display: none;"><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>钟铭选楼（嘉庚五）603</div>	 </div><div class="arrage" data-bjdm="20262027118013006000111" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>Python程序设计(11)</div>		<div>程明</div>	<div>钟铭选楼（嘉庚五）605</div>	 </div></td>	<td jcxq="8-5" jc="8" xq="5"></td>	<td jcxq="8-6" jc="8" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第9节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">19:10~19:55</td>	<td jcxq="9-7" jc="9" xq="7"></td>	<td jcxq="9-1" jc="9" xq="1" rowspan="1"></td>	<td jcxq="9-2" jc="9" xq="2" rowspan="1"></td>	<td jcxq="9-3" jc="9" xq="3"></td>	<td jcxq="9-4" jc="9" xq="4" rowspan="2"><div class="arrage" data-bjdm="20262027113010001008102" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>物理化学（一）(02)</div>		<div>曹阳,颜佳伟</div>	<div>庄汉水楼（南强二）209</div>	 </div></td>	<td jcxq="9-5" jc="9" xq="5"></td>	<td jcxq="9-6" jc="9" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第10节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">20:05~20:50</td>	<td jcxq="10-7" jc="10" xq="7"></td>	<td jcxq="10-1" jc="10" xq="1"></td>	<td jcxq="10-2" jc="10" xq="2"></td>	<td jcxq="10-3" jc="10" xq="3"></td>	<td jcxq="10-4" jc="10" xq="4" style="display: none;"><div class="arrage" data-bjdm="20262027113010001008102" style="height: 84px;background: #faac8f;"><span class="bybs" style="position:absolute;right:0; top:0;width:25px;height:25px;line-height:25px;text-align:center;color:white;font-size:medium;background:#93D36E;border-radius:5px;">本</span>		<div>2-16双周</div>		<div>物理化学（一）(02)</div>		<div>曹阳,颜佳伟</div>	<div>庄汉水楼（南强二）209</div>	 </div></td>	<td jcxq="10-5" jc="10" xq="5"></td>	<td jcxq="10-6" jc="10" xq="6"></td>	</tr>	<tr>		<td class="jqx-grid-column-header" rowspan="1">第11节</td>		<td class="jqx-grid-column-header" style="font-weight:normal;" rowspan="1">21:00~21:45</td>	<td jcxq="11-7" jc="11" xq="7"></td>	<td jcxq="11-1" jc="11" xq="1"></td>	<td jcxq="11-2" jc="11" xq="2"></td>	<td jcxq="11-3" jc="11" xq="3"></td>	<td jcxq="11-4" jc="11" xq="4" rowspan="1"></td>	<td jcxq="11-5" jc="11" xq="5"></td>	<td jcxq="11-6" jc="11" xq="6"></td>	</tr></tbody></table></div>
+				<style>
+					.mtt_table1 {
+						border: 1px solid #D8DCF0;
+						border-collapse: collapse;
+						font-size: 12px;
+					}
+
+					.mtt_table1 td {
+						line-height: 28px;
+						text-align: center;
+						border: 1px solid #D8DCF0;
+					}
+
+					.mtt_table1 th {
+						line-height: 28px;
+						text-align: center;
+						border: 1px solid #D8DCF0;
+						font-weight: bold;
+					}
+				</style>
+			</div>
+		</div>
+		
+		<div id="kbckBottom">
+			<div class="bh-col-md-12 bh-form-groupname sc-title-borderLeft bh-mv-16" id="kcapsm">日期安排列表</div>
+			<div id="kbckBottom-index-table" style="margin-bottom:12px">	<table class="mtt_table1" style="width:100%;">			<thead>			<tr>				<th class="jqx-grid-column-header">课程名称</th>				<th class="jqx-grid-column-header">班级名称</th>				<th class="jqx-grid-column-header">校区</th>				<th class="jqx-grid-column-header">上课人数</th>				<th class="jqx-grid-column-header">日期</th>				<th class="jqx-grid-column-header">星期</th>				<th class="jqx-grid-column-header">开始节次代码</th>				<th class="jqx-grid-column-header">结束节次代码</th>				<th class="jqx-grid-column-header">教室名称</th>				<th class="jqx-grid-column-header">备注</th>			</tr>			</thead>			<tbody id="my_wdkbTbody"><tr><td colspan="13">暂无数据</td></tr></tbody>		</table></div>
+		</div>
+		
+		<div id="wsckbkc" style="display: none;">
+			<div class="bh-col-md-12 bh-form-groupname sc-title-borderLeft bh-mv-16">学生未安排时间地点课程</div>
+			<div id="wsckbkc-index-table">	<table class="mtt_table1" style="width:100%;">			<tbody><tr>				<th class="jqx-grid-column-header">操作</th>				<th class="jqx-grid-column-header">课程代码</th>				<th class="jqx-grid-column-header">课程名称</th>				<th class="jqx-grid-column-header">推荐班</th>				<th class="jqx-grid-column-header">校区</th>				<th class="jqx-grid-column-header">上课人数</th>				<th class="jqx-grid-column-header">任务来源</th>			</tr>		</tbody></table></div>
+		</div>
+	</section>
+	<footer style="padding-left: 16px;">
+	</footer>
+</article>
+</main><footer bh-footer-role="footer" class="bh-footer"><div class="bh-footer-content">版权信息：© 2016 厦门大学&amp;江苏金智教育信息股份有限公司 苏ICP备10204514号</div></footer>
+
+  <div class="app-ajax-loading jqx-widget jqx-loader jqx-rc-all jqx-fill-state-normal jqx-rc-t jqx-rc-b jqx-popup" style="position: fixed; z-index: 30000; background-color: rgba(0, 0, 0, 0); width: 300px; height: 60px; display: none; left: -150px; top: -30px;" id="jqxWidget1c5fe293"><div class="bh-loader-icon-line  bh-loader-icon-line-border"><i></i><i></i><i></i><i></i><i></i></div></div><div class="app-loading"><div class="spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div></div><div id="bh-eventWindow"></div><div class="bh-headerBar-roleBox bh-card bh-card-lv3 bh-headerBar-popupBox-animate" bh-header-role="roleBox"><div class="bh-headerBar-roleBox-explain bh-headerBar-roleBox-title">选择角色</div><div class="bh-headerBar-roleBox-title"><a id="20210910231147678" href="javascript:void(0);">本科学生组</a></div></div><div class="bh-headerBar-userIfon bh-headerBar-popupBox-animate bh-card bh-card-lv3" bh-header-role="bhHeaderBarInfoBox"><div class="bh-headerBar-userInfo-img"><img src="./我的课表app_files/user(1).png"></div><div class="bh-headerBar-userInfo-detail"><div class="bh-headerBar-userIfon-name bh-str-cut" title="STUDENT_ID"> STUDENT_ID</div><div>STUDENT_NAME</div></div><a class="bh-btn bh-btn-default bh-btn-small bh-btn-danger" href="https://jw.xmu.edu.cn/gsapp/sys/yjsrzfwapp/logout/forceLogoutCas.do?originUrl=https%3A%2F%2Fjw.xmu.edu.cn%2Fgsapp%2Fsys%2Fwdkbapp%2F*default%2Findex.do%3Ft_s%3D1789186398072%26EMAP_LANG%3Dzh%26THEME%3Dcherry%26amp_sec_version_%3D1%26gid_%3DakVWWEphanFVSGVJdW91RFRvQzR6UWd5dFFmeVpvRnhlNHYxUEI3NDNJeFA1UHdBbUs1ZUZjSkYxbFVXMkFOYjZWLzJRazZOZnFiUGUrTFMweGtDdEE9PQ">退出登录</a></div><div bh-header-more-guid="714d9c12-d9f6-80f7-b7ab-2d217f639060" class="bh-header-navMoreBox" bh-header-role="navMoreBox" style="height: 0px;"><div class="bh-header-navMoreBox-bar bh-animate-fast bh-animate-top"></div></div><div id="zero-qs-container" class="zero-qs-container">		<i class="icon iconfont bh-color-info" style="font-size:24px;"></i>		<div id="zero-qs-container-close" class="qs-close" title="关闭"></div>	</div></body><div style="display: contents !important;"><template shadowrootmode="closed"><div class="photoshow photoshow--with-backdrop-blur photoshow--color-scheme-system" popover="manual" dir="ltr" data-version="M2JlZDZjYTQ3MWIyYjZmMmUzY2IxMmM2" style="zoom: 1 !important;">
+        <div class="photoshow__viewer photoshow__viewer--with-thumbnail-indicator" style="opacity: 0;">
+          <div class="photoshow__thumbnail-indicator" style="transform: scaleY(0);"></div>
+          <figure class="photoshow__figure">
+            <div class="photoshow__image-viewport">
+              <div class="photoshow__image-perspective-wrapper">
+                <div class="photoshow__image-rotation-wrapper">
+                  <div class="photoshow__image-scrolling-wrapper">
+                    <img class="photoshow__image photoshow__image--with-image-smoothing">
+                  </div>
+                </div>
+              </div>
+              <div class="photoshow__status photoshow__status--view-mode" data-status="l"></div>
+              <article class="photoshow__image-desc">
+                <p class="photoshow__image-desc-caption"></p>
+                <footer class="photoshow__image-desc-details">
+                  <dl class="photoshow__image-desc-details-inner">
+                    <dt>图片尺寸</dt>
+                    <dd data-item="dimensions"></dd>
+                    <dt>图片格式</dt>
+                    <dd data-item="format"></dd>
+                    <dt>文件大小</dt>
+                    <dd data-item="size"></dd>
+                  </dl>
+                </footer>
+              </article>
+            </div>
+            <figcaption class="photoshow__image-info">
+              <span class="photoshow__image-info-caption"></span>
+              <span class="photoshow__image-info-details"></span>
+            </figcaption>
+          </figure>
+        </div>
+      </div></template></div></html>
