@@ -128,7 +128,11 @@ class CourseRepository(private val db: AppDatabase) {
 
     /** 设置学期开始日期（yyyy-MM-dd），用于当前周计算。 */
     suspend fun updateSemesterStartDate(semesterId: Long, startDate: String) {
-        db.semesterDao().updateStartDate(semesterId, startDate)
+        db.withTransaction {
+            db.semesterDao().updateStartDate(semesterId, startDate)
+            // TimetableViewModel 观察课表表并据此计算 actualWeek；同步更新可立即触发响应式刷新。
+            db.timetableDao().updateStartDateBySemesterId(semesterId, startDate)
+        }
     }
 
     /** 更新课程备注。 */

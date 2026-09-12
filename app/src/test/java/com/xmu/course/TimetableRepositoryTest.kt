@@ -80,6 +80,17 @@ class TimetableRepositoryTest {
         assertEquals(0, after.first { it.timetable.id == t2.id }.courseCount)
     }
 
+    @Test fun `修改学期开学日期同步课表观察值`() = runTest {
+        val timetable = repo.createTimetable("测试课表")
+        assertNull(db.semesterDao().getById(timetable.semesterId)?.startDate)
+        assertNull(repo.observeTimetable(timetable.id).first()?.startDate)
+
+        courseRepo.updateSemesterStartDate(timetable.semesterId, "2026-09-14")
+
+        assertEquals("2026-09-14", db.semesterDao().getById(timetable.semesterId)?.startDate)
+        assertEquals("2026-09-14", repo.observeTimetable(timetable.id).first()?.startDate)
+    }
+
     @Test fun `导入后绑定课表且幂等`() = runTest {
         val html = javaClass.getResourceAsStream("/sample_timetable.html")!!
             .readBytes().toString(Charsets.UTF_8)

@@ -49,6 +49,9 @@ interface TimetableDao {
     @Query("UPDATE timetables SET startDate = :date WHERE id = :id")
     suspend fun updateStartDate(id: Long, date: String)
 
+    @Query("UPDATE timetables SET startDate = :date WHERE semesterId = :semesterId")
+    suspend fun updateStartDateBySemesterId(semesterId: Long, date: String)
+
     @Query("UPDATE timetables SET color = :color WHERE id = :id")
     suspend fun updateColor(id: Long, color: String)
 
