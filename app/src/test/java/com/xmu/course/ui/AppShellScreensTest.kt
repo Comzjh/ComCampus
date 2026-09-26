@@ -52,6 +52,8 @@ composeRule.onNodeWithText("个人中心").assertIsDisplayed()
         composeRule.onNodeWithText("数据与隐私").assertExists()
         composeRule.onNodeWithText("外观与启动").assertExists()
         composeRule.onNodeWithText("关于").assertExists()
+        composeRule.onNodeWithTag("profile_support").assertIsDisplayed()
+        composeRule.onNodeWithText("支持 ComCampus").assertIsDisplayed()
         val tags = listOf(
             "profile_auth_center",
             "profile_tronclass",

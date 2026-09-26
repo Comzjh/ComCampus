@@ -160,6 +160,14 @@ class SettingsHelpSectionTest {
     }
 
     @Test
+    fun `about section identifies the current open source license`() {
+        showSettings()
+        composeRule.onNodeWithText("开源协议：GNU GPL-3.0-only")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `semester section clarifies that enrolled courses need separate timetable import`() {
         showSettings()
 

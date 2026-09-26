@@ -85,6 +85,15 @@ fun ProfileScreen(
                 modifier = Modifier.testTag("profile_tronclass"),
             )
         }
+        AppGroupedSection(title = "支持 ComCampus") {
+            AppNavigationRow(
+                title = "支持项目维护",
+                description = "自愿支持，帮助持续维护这个开源项目",
+                icon = Icons.Filled.Favorite,
+                onClick = onOpenSupport,
+                modifier = Modifier.testTag("profile_support"),
+            )
+        }
         AppGroupedSection(title = "数据与隐私") {
             AppNavigationRow(
                 title = "数据来源",
@@ -117,13 +126,6 @@ fun ProfileScreen(
                 icon = Icons.Filled.MenuBook,
                 onClick = onOpenGuide,
                 modifier = Modifier.testTag("profile_guide"),
-            )
-            AppListDivider()
-            AppNavigationRow(
-                title = "支持我们",
-                icon = Icons.Filled.Favorite,
-                onClick = onOpenSupport,
-                modifier = Modifier.testTag("profile_support"),
             )
         }
     }

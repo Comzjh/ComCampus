@@ -1,6 +1,12 @@
 # Changelog
 
-## v0.9.1（准备发布）
+## v0.9.2（GitHub 稳定版，versionCode 92）
+
+- 设置页明确标注当前开源协议为 GNU GPL-3.0-only。
+- 将支持开发入口移至个人中心靠前位置，并保持次级视觉权重。
+- 作为最新稳定版发布到 GitHub Releases；应用内更新器可检查并校验 APK 后交给 Android 安装器。
+
+## v0.9.1（GitHub 稳定版）
 
 - ComCampus 首个公开稳定版本，应用内可检查 GitHub Release、校验 APK 后交给 Android 安装器完成更新。
 - 更新器要求 Android 安装确认，并验证 GitHub Release 提供的 SHA-256 摘要。

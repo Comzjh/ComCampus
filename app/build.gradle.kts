@@ -7,8 +7,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val appVersionName = providers.gradleProperty("appVersionName").orElse("0.9.1").get()
-val appVersionCode = providers.gradleProperty("appVersionCode").orElse("91").get().toInt()
+val appVersionName = providers.gradleProperty("appVersionName").orElse("0.9.2").get()
+val appVersionCode = providers.gradleProperty("appVersionCode").orElse("92").get().toInt()
 
 // 发布签名只从本机 keystore.properties 读取，文件已加入 .gitignore。
 val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")

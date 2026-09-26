@@ -323,7 +323,7 @@ private fun SettingsScreenContent(
                     modifier = Modifier.testTag("settings_about_unofficial"),
                 )
                 Text(
-                    "GNU GPL-3.0-only",
+                    "开源协议：GNU GPL-3.0-only",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
