@@ -1,91 +1,75 @@
 # ComCampus
 
-厦门大学学生专属的本地课程表 Android App
+厦门大学学生的 Android 校园学习应用，围绕课表、学业、畅课与待办，采用本地优先设计。
 
-[GitHub 项目](https://github.com/Comzjh/ComCampus) · [最新 Release](https://github.com/Comzjh/ComCampus/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Comzjh/ComCampus?display_name=tag&sort=semver)](https://github.com/Comzjh/ComCampus/releases/latest)
+[![License: GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+[GitHub 仓库](https://github.com/Comzjh/ComCampus)
 
-## 简介
+## 功能
 
-ComCampus 是面向厦门大学学生开发的 Android 本地课程表应用。
+### 课表
 
-应用支持从厦门大学金智教务“我的课表”页面导入课程，在本地完成 HTML 解析并保存到 Room 数据库。项目采用本地优先设计，不依赖自建服务器；课程数据保存在用户设备本地。
+- 在厦大教务官方 WebView 中导入课表，也支持本地 HTML 和手动添加。
+- 按周查看课程，处理单双周、连堂与时间冲突。
+- 管理课程、学期、跳课状态以及背景、字号、网格和深浅主题。
 
-教务登录发生在应用内 WebView 中，网络请求由教务页面完成。项目代码不包含上传用户课表的接口，也不保存厦大统一身份认证账号密码。
+### 学业
 
-## 当前功能
+- 查看本学期学业概况、历史成绩与培养方案信息。
+- 手动刷新教务数据，并在本机缓存最近一次结果。
+- 提供 GPA 设置与学业模拟；模拟值不会写回教务成绩。
 
-- 厦门大学金智教务 WebView 导入
-- 本地 HTML 课程解析
-- Room 本地存储
-- 周视图课表与当前周计算
-- 单周、双周课程过滤
-- 连堂课程显示
-- 冲突课程自动分栏布局
-- 课表、学期和课程管理
-- 翘课模式：保留课程位置并降低显示透明度
-- 背景、模糊、遮罩、字号、网格线等个性化设置
-- 今日课程 Widget（4×2）
-- 下一节课 Widget（2×2）与分钟级倒计时
-- 使用教程与支持开发页面
-- 支付宝、微信收款码查看、放大与保存到系统相册
-- Material 3、浅色/深色模式
+### 畅课与待办
 
-### TronClass（厦大畅课，MVP）
+- 在厦大统一身份认证 WebView 中登录畅课，同步课程。
+- 将畅课作业和考试事项导入待办；支持关联课程与本地手动待办。
+- 可在设置中控制作业导入和前台自动刷新；自动刷新最多每小时一次，不使用后台定时任务。
+- 待办支持编辑、完成、删除、截止时间和逾期状态；目前不提供系统通知或推送提醒。
 
-- 通过厦门大学统一身份认证 WebView 登录畅课。
-- 使用 Android Keystore 加密保存必要的本地会话信息，不保存明文密码。
-- 从 `/api/my-courses` 同步课程到本地 Room 数据库，支持离线查看最近一次缓存。
-- 退出登录时清除畅课会话、畅课 WebView 数据和畅课课程缓存，不影响金智教务数据。
-- 课程详情可显示运行时匹配到的畅课课程；资料详情、作业和通知接口暂未接入。
-- 可选在设置中开启“自动导入畅课作业”；开启后只在用户主动同步畅课数据时，按课程读取作业并写入待办。
-- 畅课作业使用 `source + externalId` 去重，完成状态和本地缓存均保留；无法确定课程关联时不会强制绑定。
+### Widget、主题与教程
 
-### 待办中心
+- 提供今日课程、下一节课和待办 Widget。
+- 支持浅色/深色模式、课表背景与显示设置，并内置使用教程和校园服务入口。
 
-- 在独立的“待办”页面创建、编辑、完成/取消完成和删除待办。
-- 支持可选关联本地课表或畅课课程，也可以创建未关联课程的待办。
-- 待办按未完成、截止时间和完成状态排序，数据保存在本地 Room。
-- 当前不后台自动生成待办，不接入通知或推送提醒；畅课作业导入需要用户主动开启并点击同步。
+## 下载与更新
+
+- [下载最新稳定版](https://github.com/Comzjh/ComCampus/releases/latest)；当前公开版本为 **v0.9.1**（versionCode 91）。
+- Android 8.0（API 26）及以上。
+- 应用默认在启动时每 24 小时最多检查一次 GitHub Releases。发现新版后会下载 APK 并校验 SHA-256，再交给 Android 系统安装器；安装仍由用户确认。
+- 包名：com.comcampus.app。
 
 ## 隐私与数据
 
-- 课程和显示设置写入用户设备本地数据库与偏好设置。
-- 项目不提供自建服务器，不包含上传课程数据的功能。
-- 教务和畅课账号密码均由 WebView 登录页面处理，应用数据层不保存账号密码。
-- 畅课会话仅在本地加密保存，项目不上传账号、密码、Cookie 或 Token。
-- 使用公共设备时，请在离开前退出教务页面，并按需清理本机课表。
+- 应用没有 ComCampus 自建服务端。教务和畅课请求直接发送到对应学校服务；学校系统会按其自身规则处理这些请求。
+- 课表、待办和学业缓存保存在本机应用数据中。畅课登录后所需的最小会话信息使用 Android Keystore 加密保存在本机；应用不保存明文密码。
+- Android 系统数据备份已关闭。
+- 自动更新会访问 GitHub API 检查版本；发现新版后从 GitHub Releases 下载并校验 APK，再交给 Android 系统安装器由用户确认。
 
-## 构建
+## 开发构建
 
-环境要求：
+环境要求：JDK 17、Android Studio（AGP 8.7+）和 Android SDK 35。
 
-- JDK 17+
-- Android Studio（AGP 8.7+）
-- Android SDK 35
+macOS / Linux：
 
-Debug 构建：
+~~~bash
+bash ./gradlew :app:testDebugUnitTest
+bash ./gradlew :app:assembleDebug
+~~~
 
-```bash
-./gradlew test
-./gradlew assembleDebug
-```
+Windows：
 
-Release 构建需要本地签名文件。复制 `keystore.properties.example` 为 `keystore.properties`，填写本地 keystore 路径、alias 和密码。`keystore.properties`、`*.jks` 与 `*.keystore` 已加入 `.gitignore`，不要提交到仓库。
+~~~bat
+gradlew.bat :app:testDebugUnitTest
+gradlew.bat :app:assembleDebug
+~~~
 
-```bash
-./gradlew clean assembleRelease
-```
+Release 构建需自行配置签名。将 keystore.properties.example 复制为本机的 keystore.properties，再填写自己的签名文件路径与口令。签名文件和本机配置不得提交到仓库。
 
-签名校验：
+~~~bash
+bash ./gradlew :app:assembleRelease
+~~~
 
-```bash
-apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
-```
+## 许可
 
-## 版本
-
-当前开发版本：`0.9.1`（versionCode `91`）；本地体验包使用 `0.9.0`（versionCode `90`），两者使用同一源码，仅版本字段不同。
-
-## License
-
-MIT
+当前源码按 **GNU GPL-3.0-only** 许可，详见 [LICENSE](LICENSE)。GPL 允许商业使用；分发本项目或其衍生版本时，必须遵守许可证要求。此前按 MIT 发布的历史版本继续按其随附许可处理。第三方依赖和资源仍适用各自的许可或权利说明。

@@ -323,7 +323,7 @@ private fun SettingsScreenContent(
                     modifier = Modifier.testTag("settings_about_unofficial"),
                 )
                 Text(
-                    "MIT License",
+                    "GNU GPL-3.0-only",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
