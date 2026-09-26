@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import com.xmu.course.domain.Course
 import com.xmu.course.ui.timetable.CourseCard
@@ -59,5 +60,33 @@ class CourseCardRenderHeightTest {
         rule.waitForIdle()
         val actualPx = rule.onNodeWithTag(CARD_TEST_TAG).fetchSemanticsNode().size.height
         assertEquals("duration=4 的课程卡必须填满 cellHeight x 4", expectedPx, actualPx)
+    }
+
+    @Test
+    fun compactCardKeepsCourseBasics() {
+        val course = Course(
+            name = "大学物理实验（08）",
+            teacher = "陈婷",
+            location = "海韵教学楼104",
+            dayOfWeek = 1,
+            startSection = 1,
+            duration = 4,
+            weeks = (1..16).toSet(),
+        )
+        rule.setContent {
+            Box(Modifier.width(80.dp).height(64.dp * 4)) {
+                CourseCard(
+                    course = course,
+                    compact = true,
+                    showTeacher = true,
+                    showLocation = true,
+                    showNote = false,
+                    onClick = {},
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("@海韵教学楼104", useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("陈婷", useUnmergedTree = true).assertExists()
     }
 }

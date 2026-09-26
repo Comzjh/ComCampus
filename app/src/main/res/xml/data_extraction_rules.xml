@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) data extraction rules.
+
+  Product policy: authentication/session material must never leave the device
+  through cloud backup or device-to-device transfer. Combined with
+  android:allowBackup="false" in AndroidManifest.xml this is deny-by-default:
+
+  - TronClass session blob (files/tronclass_session.enc, Keystore-encrypted)
+  - Wisedu auth marker prefs (sharedprefs/wisedu_auth_status.xml)
+  - academic snapshot (files/academic_completion/snapshot.json)
+  - Room databases (database domain)
+
+  allowBackup="false" already blocks all extraction on every API level; these
+  rules make the same intent explicit and remain a guard if allowBackup ever
+  changes.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

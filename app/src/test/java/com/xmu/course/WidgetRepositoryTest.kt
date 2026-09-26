@@ -6,17 +6,23 @@ import androidx.test.core.app.ApplicationProvider
 import com.xmu.course.data.CourseRepository
 import com.xmu.course.data.TimetableRepository
 import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.data.todo.model.TodoEntity
+import com.xmu.course.data.todo.model.TodoSource
+import com.xmu.course.data.tronclass.model.TronCourseEntity
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.CourseSource
 import com.xmu.course.ui.widget.WidgetRepository
+import com.xmu.course.ui.widget.WidgetCourse
 import com.xmu.course.ui.widget.toChineseDay
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -125,6 +131,97 @@ class WidgetRepositoryTest {
     }
 
     @Test
+    fun nextCourseWidgetSkipsSkippedCourses() = runTest {
+        val monday = today.dayOfWeek.value
+        val skippedId = insert("跳过的上午课", monday, 1)
+        val expectedId = insert("可上的下午课", monday, 5)
+        courseRepo.markCourseSkipped(skippedId)
+
+        val data = WidgetRepository.loadToday(
+            ApplicationProvider.getApplicationContext(),
+            today = today,
+            now = LocalTime.of(7, 0),
+            db = db,
+        )
+
+        val next = WidgetRepository.findNextCourse(data.courses, data.nowMinuteOfDay)
+
+        assertEquals(expectedId, next?.id)
+        assertEquals("可上的下午课", next?.name)
+    }
+
+    @Test
+    fun nextCourseWidgetReturnsNoCourseWhenAllFutureCoursesAreSkipped() = runTest {
+        val monday = today.dayOfWeek.value
+        val firstSkippedId = insert("跳过的上午课", monday, 1)
+        val secondSkippedId = insert("跳过的下午课", monday, 5)
+        courseRepo.markCourseSkipped(firstSkippedId)
+        courseRepo.markCourseSkipped(secondSkippedId)
+
+        val data = WidgetRepository.loadToday(
+            ApplicationProvider.getApplicationContext(),
+            today = today,
+            now = LocalTime.of(7, 0),
+            db = db,
+        )
+
+        assertNull(WidgetRepository.findNextCourse(data.courses, data.nowMinuteOfDay))
+    }
+
+    @Test
+    fun ongoingCourseWinsOverFutureCourse() {
+        val ongoing = widgetCourse(id = 1L, name = "进行中的课", startMinute = 540, endMinute = 630)
+        val future = widgetCourse(id = 2L, name = "下一节课", startMinute = 660, endMinute = 720)
+
+        val selected = WidgetRepository.findNextCourse(listOf(ongoing, future), nowMinuteOfDay = 585)
+
+        assertEquals(ongoing.id, selected?.id)
+    }
+
+    @Test
+    fun ongoingCourseFallsBackToFutureCourseAfterItEnds() {
+        val ended = widgetCourse(id = 1L, name = "已结束的课", startMinute = 540, endMinute = 630)
+        val future = widgetCourse(id = 2L, name = "下一节课", startMinute = 660, endMinute = 720)
+
+        val selected = WidgetRepository.findNextCourse(listOf(ended, future), nowMinuteOfDay = 630)
+
+        assertEquals(future.id, selected?.id)
+    }
+
+    @Test
+    fun skippedOngoingCourseDoesNotWinSelection() {
+        val skipped = widgetCourse(
+            id = 1L,
+            name = "跳过的进行中课程",
+            startMinute = 540,
+            endMinute = 630,
+            isSkipped = true,
+        )
+        val future = widgetCourse(id = 2L, name = "下一节课", startMinute = 660, endMinute = 720)
+
+        val selected = WidgetRepository.findNextCourse(listOf(skipped, future), nowMinuteOfDay = 585)
+
+        assertEquals(future.id, selected?.id)
+    }
+
+    private fun widgetCourse(
+        id: Long,
+        name: String,
+        startMinute: Int,
+        endMinute: Int,
+        isSkipped: Boolean = false,
+    ) = WidgetCourse(
+        id = id,
+        name = name,
+        location = "教室",
+        startSection = 1,
+        startTime = "09:00",
+        startMinuteOfDay = startMinute,
+        endMinuteOfDay = endMinute,
+        isSkipped = isSkipped,
+    )
+
+    @Test
     fun weekFilterWidgetTest() = runTest {
         val monday = today.dayOfWeek.value
         insert("单周课", monday, 1, weeks = setOf(1, 3, 5))
@@ -199,4 +296,83 @@ class WidgetRepositoryTest {
         assertTrue(data.courses.isEmpty())
         assertEquals("今日无课程", WidgetRepository.countdownText(data.nowMinuteOfDay, null))
     }
+
+    @Test
+    fun todoWidgetResolvesLocalHomeworkAndExamCourses() = runTest {
+        val localCourseId = insert("本地课程", today.dayOfWeek.value, 1)
+        val tronCourseId = 9001L
+        db.tronCourseDao().insertAll(
+            listOf(
+                TronCourseEntity(
+                    tronCourseId = tronCourseId,
+                    name = "畅课课程",
+                    semester = "2026-1",
+                    instructor = "畅课老师",
+                    updatedTime = nowMillis,
+                ),
+            ),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "本地待办",
+                description = "",
+                courseId = localCourseId,
+                source = TodoSource.LOCAL.name,
+                deadline = nowMillis + 1_000,
+                createdTime = nowMillis,
+                updatedTime = nowMillis,
+            ),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "畅课作业",
+                description = "",
+                courseId = tronCourseId,
+                source = TodoSource.TRONCLASS.name,
+                deadline = nowMillis + 2_000,
+                createdTime = nowMillis,
+                updatedTime = nowMillis,
+                externalId = "homework-1",
+            ),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "日常练习",
+                description = "",
+                courseId = tronCourseId,
+                source = TodoSource.TRONCLASS.name,
+                deadline = nowMillis + 3_000,
+                createdTime = nowMillis,
+                updatedTime = nowMillis,
+                externalId = "exam:1",
+            ),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "已完成",
+                description = "",
+                courseId = tronCourseId,
+                source = TodoSource.TRONCLASS.name,
+                deadline = nowMillis + 4_000,
+                completed = true,
+                createdTime = nowMillis,
+                updatedTime = nowMillis,
+                externalId = "exam:2",
+            ),
+        )
+
+        val data = WidgetRepository.loadTodos(
+            context = ApplicationProvider.getApplicationContext(),
+            nowMillis = nowMillis,
+            zoneId = ZoneId.of("Asia/Shanghai"),
+            db = db,
+        )
+
+        assertEquals(3, data.totalUnfinished)
+        assertEquals(listOf("本地待办", "畅课作业", "日常练习"), data.items.map { it.title })
+        assertEquals(listOf("本地课程", "畅课课程", "畅课课程"), data.items.map { it.courseName })
+        assertFalse(data.items.any { it.title == "已完成" })
+    }
+
+    private val nowMillis: Long = today.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
 }

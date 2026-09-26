@@ -27,9 +27,9 @@ object DisplaySettings {
     /** App 启动时调用一次，从 prefs 恢复。 */
     fun load(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        _showGrid.value = prefs.getBoolean(KEY_SHOW_GRID, true)
-        _onlyCurrentWeek.value = prefs.getBoolean(KEY_ONLY_CURRENT, false)
-        _hideWeekend.value = prefs.getBoolean(KEY_HIDE_WEEKEND, false)
+        _showGrid.value = prefs.readSafely(true) { getBoolean(KEY_SHOW_GRID, true) }
+        _onlyCurrentWeek.value = prefs.readSafely(false) { getBoolean(KEY_ONLY_CURRENT, false) }
+        _hideWeekend.value = prefs.readSafely(false) { getBoolean(KEY_HIDE_WEEKEND, false) }
     }
 
     fun setShowGrid(context: Context, value: Boolean) {

@@ -151,7 +151,7 @@ class SameSlotRoomTest {
                 Course(name = "课程A", teacher = "甲", location = "A101", dayOfWeek = 3, startSection = 3, duration = 2, weeks = (1..16).toSet()),
                 Course(name = "课程B", teacher = "乙", location = "B202", dayOfWeek = 3, startSection = 3, duration = 2, weeks = (1..16).toSet()),
             )
-            val r = courseRepo.commitImport(semester, two, overwrite = false) as com.xmu.course.data.ImportResult.Success
+            val r = courseRepo.commitImport(semester, two, overwrite = false) as com.xmu.course.data.import.ImportResult.Success
             val courses = courseRepo.observeCourses(r.semesterId).first()
             assertEquals(2, courses.size)
             assertEquals(setOf("课程A", "课程B"), courses.map { it.name }.toSet())

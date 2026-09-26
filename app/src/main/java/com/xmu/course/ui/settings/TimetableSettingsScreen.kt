@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -35,9 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import com.xmu.course.data.AxisTextColor
+import com.xmu.course.data.TimetableAxisStyle
+import com.xmu.course.data.TimetablePrefs
 import com.xmu.course.domain.TextHorizontalAlignment
 import com.xmu.course.domain.TextVerticalAlignment
 import com.xmu.course.domain.TimetableConfig
+import com.xmu.course.ui.timetable.AxisColorSwatchRow
 
 private val horizontalOptions = listOf(
     TextHorizontalAlignment.START to "靠左",
@@ -61,6 +67,8 @@ fun TimetableSettingsScreen(
     viewModel: TimetableSettingsViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val axisStyle by TimetablePrefs.axisStyle.collectAsState()
+    val axisContext = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -102,7 +110,11 @@ fun TimetableSettingsScreen(
                     .padding(horizontal = 12.dp),
             ) {
                 // ---- 显示设置 ----
-                Card(Modifier.fillMaxWidth()) {
+                Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("显示设置", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
@@ -122,7 +134,11 @@ fun TimetableSettingsScreen(
                 }
 
                 // ---- 信息显示 ----
-                Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("信息显示", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
@@ -142,7 +158,11 @@ fun TimetableSettingsScreen(
                 }
 
                 // ---- 文字设置 ----
-                Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("文字设置", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
@@ -176,8 +196,26 @@ fun TimetableSettingsScreen(
                     }
                 }
 
+                // ---- 课表文字（Phase 9.1 全局显示偏好；Phase 11 扩展星期栏/日期栏独立字号与颜色） ----
+                TimetableAxisSettingsSection(
+                    axisStyle = axisStyle,
+                    modifier = Modifier.padding(top = 12.dp),
+                    onPeriodFontChange = { TimetablePrefs.setAxisPeriodFontSp(axisContext, it) },
+                    onTimeFontChange = { TimetablePrefs.setAxisTimeFontSp(axisContext, it) },
+                    onDateFontChange = { TimetablePrefs.setAxisDateFontSp(axisContext, it) },
+                    onPeriodColorChange = { TimetablePrefs.setAxisPeriodColor(axisContext, it) },
+                    onTimeColorChange = { TimetablePrefs.setAxisTimeColor(axisContext, it) },
+                    onWeekdayFontChange = { TimetablePrefs.setAxisWeekdayFontSp(axisContext, it) },
+                    onWeekdayColorChange = { TimetablePrefs.setAxisWeekdayColor(axisContext, it) },
+                    onDateColorChange = { TimetablePrefs.setAxisDateColor(axisContext, it) },
+                )
+
                 // ---- 外观 ----
-                Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("外观", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
@@ -203,12 +241,89 @@ fun TimetableSettingsScreen(
                 }
 
                 Text(
-                    "除网格线为全局开关外，以上课表设置仅对当前课表生效。",
+                    "除网格线与课表文字为全局设置外，以上课表设置仅对当前课表生效。",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(12.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * 课表文字设置区：节次栏/时间栏/星期栏/日期栏的字号与颜色完全独立（Phase 9.1/9.2 及 Phase 11 扩展）。
+ * 保存到 TimetablePrefs（SharedPreferences），全局生效、即时预览。
+ */
+@Composable
+internal fun TimetableAxisSettingsSection(
+    axisStyle: TimetableAxisStyle,
+    modifier: Modifier = Modifier,
+    onPeriodFontChange: (Int) -> Unit,
+    onTimeFontChange: (Int) -> Unit,
+    onDateFontChange: (Int) -> Unit,
+    onPeriodColorChange: (AxisTextColor) -> Unit,
+    onTimeColorChange: (AxisTextColor) -> Unit,
+    onWeekdayFontChange: (Int) -> Unit,
+    onWeekdayColorChange: (AxisTextColor) -> Unit,
+    onDateColorChange: (AxisTextColor) -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text("课表文字", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            AxisFontConfigSlider("节次栏字号", axisStyle.periodFontSp) { onPeriodFontChange(it) }
+            Text(
+                "节次栏颜色",
+                Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            AxisColorSwatchRow(
+                selected = axisStyle.periodColor,
+                modifier = Modifier.padding(top = 8.dp),
+                tagPrefix = "axis_period",
+                onSelect = onPeriodColorChange,
+            )
+            AxisFontConfigSlider("时间栏字号", axisStyle.timeFontSp) { onTimeFontChange(it) }
+            Text(
+                "时间栏颜色",
+                Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            AxisColorSwatchRow(
+                selected = axisStyle.timeColor,
+                modifier = Modifier.padding(top = 8.dp),
+                tagPrefix = "axis_time",
+                onSelect = onTimeColorChange,
+            )
+            AxisFontConfigSlider("星期栏字号", axisStyle.weekdayFontSp) { onWeekdayFontChange(it) }
+            Text(
+                "星期栏颜色",
+                Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            AxisColorSwatchRow(
+                selected = axisStyle.weekdayColor,
+                modifier = Modifier.padding(top = 8.dp),
+                tagPrefix = "axis_weekday",
+                onSelect = onWeekdayColorChange,
+            )
+            AxisFontConfigSlider("日期栏字号", axisStyle.dateFontSp) { onDateFontChange(it) }
+            Text(
+                "日期栏颜色",
+                Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            AxisColorSwatchRow(
+                selected = axisStyle.dateColor,
+                modifier = Modifier.padding(top = 8.dp),
+                tagPrefix = "axis_date",
+                onSelect = onDateColorChange,
+            )
         }
     }
 }
@@ -221,6 +336,7 @@ private fun ConfigSlider(
     value: Float,
     min: Float,
     max: Float,
+    steps: Int = 0,
     onCommit: (Float) -> Unit,
 ) {
     var local by remember(value) { mutableStateOf(value) }
@@ -234,8 +350,26 @@ private fun ConfigSlider(
             onValueChange = { local = it },
             onValueChangeFinished = { onCommit(local) },
             valueRange = min..max,
+            steps = steps,
         )
     }
+}
+
+/** 课表文字字号行：四栏共用 TimetableAxisStyle.AXIS_FONT_RANGE，相同字号滑块位置一致。 */
+@Composable
+private fun AxisFontConfigSlider(
+    title: String,
+    valueSp: Int,
+    onCommit: (Int) -> Unit,
+) {
+    ConfigSlider(
+        title = title,
+        valueText = { "${it.toInt()}sp" },
+        value = valueSp.toFloat(),
+        min = TimetableAxisStyle.AXIS_FONT_RANGE.first.toFloat(),
+        max = TimetableAxisStyle.AXIS_FONT_RANGE.last.toFloat(),
+        steps = TimetableAxisStyle.AXIS_FONT_RANGE.last - TimetableAxisStyle.AXIS_FONT_RANGE.first - 1,
+    ) { onCommit(it.toInt()) }
 }
 
 /** 设置行：左标题 + 右 Switch。 */

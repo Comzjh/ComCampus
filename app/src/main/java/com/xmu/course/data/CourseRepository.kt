@@ -8,9 +8,14 @@ import com.xmu.course.data.local.SemesterEntity
 import com.xmu.course.data.local.SkippedCourseEntity
 import com.xmu.course.data.local.toDomain
 import com.xmu.course.data.local.toEntity
+import com.xmu.course.data.import.CourseImportContract
+import com.xmu.course.data.import.ImportPreparation
+import com.xmu.course.data.import.ImportResult
+import com.xmu.course.contracts.CourseManagementContract
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.CourseSource
 import com.xmu.course.domain.Semester
+import com.xmu.course.domain.mergeImportedCourses
 import com.xmu.course.parser.ParsedCourse
 import com.xmu.course.parser.XmuKingosoftParser
 import com.xmu.course.parser.XmuParseResult
@@ -18,37 +23,34 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
-/**
- * 导入准备结果。
- *
- * - [Ready]：新学期，可直接提交；
- * - [Conflict]：同 code 学期已存在，禁止自动覆盖，由 UI 决定覆盖或取消。
- */
-sealed class ImportPreparation {
-    data class Ready(
-        val semester: Semester,
-        val courses: List<Course>,
-    ) : ImportPreparation()
+interface SettingsDataSource {
+    fun observeSemesters(): Flow<List<Semester>>
 
-    data class Conflict(
-        val semester: Semester,
-        val existingCount: Int,
-        val newCount: Int,
-        val pendingCourses: List<Course>,
-    ) : ImportPreparation()
+    suspend fun updateSemesterStartDate(semesterId: Long, startDate: String)
+
+    suspend fun deleteSemesterCourses(semesterId: Long)
+
+    suspend fun deleteSemester(semesterId: Long)
 }
 
 /**
  * 课程/学期数据仓库。
  *
- * 职责边界：查询、导入提交、删除；不负责 HTML 解析细节（委托 Parser）与 UI。
+ * 职责边界：查询、导入编排、导入提交、删除；导入编排仍在这里统一协调
+ * Parser、课程归一化/合并、冲突查询以及 Room 事务和覆盖写入，不负责 UI。
+ *
+ * [CourseImportContract] 是迁移期间的 legacy seam。只有当上述导入能力迁移
+ * 到稳定的内部 capability、且 provider adapter 不再需要旧 seam 后，才可退休。
  */
-class CourseRepository(private val db: AppDatabase) {
+class CourseRepository(private val db: AppDatabase) :
+    SettingsDataSource,
+    CourseImportContract,
+    CourseManagementContract {
 
     private val parser = XmuKingosoftParser()
 
     /** 观察全部学期（code 降序）。 */
-    fun observeSemesters(): Flow<List<Semester>> =
+    override fun observeSemesters(): Flow<List<Semester>> =
         db.semesterDao().observeAll().map { list -> list.map { it.toDomain() } }
 
     fun observeCourses(semesterId: Long): Flow<List<Course>> =
@@ -67,11 +69,11 @@ class CourseRepository(private val db: AppDatabase) {
      * 解析 HTML 并判断是否与已有学期冲突。
      * 同 code 学期已存在时返回 [ImportPreparation.Conflict]。
      */
-    suspend fun prepareImport(html: String): ImportPreparation {
+    override suspend fun prepareImport(html: String): ImportPreparation {
         val result = parser.parse(html)
         Log.d(TAG, "parser: ${result.courses.size} 门课程, warnings=${result.warnings.size}")
         val semester = Semester(code = result.semesterCode, name = result.semesterName)
-        val courses = result.courses.map { it.toDomainCourse() }
+        val courses = mergeImportedCourses(result.courses.map { it.toDomainCourse() })
         if (courses.isEmpty()) {
             throw ImportEmptyException(result.warnings)
         }
@@ -94,40 +96,55 @@ class CourseRepository(private val db: AppDatabase) {
      * @param overwrite 仅在 [ImportPreparation.Conflict] 且用户确认覆盖时为 true；
      * 覆盖会删除该学期全部旧课程后写入新课程（学期记录复用，不重复创建）。
      */
-    suspend fun commitImport(
+    override suspend fun commitImport(
         semester: Semester,
         courses: List<Course>,
         overwrite: Boolean,
     ): ImportResult {
+        val normalizedCourses = mergeImportedCourses(courses)
         val dao = db.semesterDao()
-        val existing = dao.getByCode(semester.code)
-        val semesterId = if (existing != null) {
-            if (!overwrite) return ImportResult.Cancelled
-            existing.id
-        } else {
-            dao.insert(SemesterEntity(code = semester.code, name = semester.name))
-        }
-        db.withTransaction {
+        val result = db.withTransaction {
+            val existing = dao.getByCode(semester.code)
+            val semesterId = if (existing != null) {
+                if (!overwrite) return@withTransaction ImportResult.Cancelled
+                val importedStartDate = semester.startDate
+                if (importedStartDate != null && importedStartDate != existing.startDate) {
+                    dao.updateStartDate(existing.id, importedStartDate)
+                    db.timetableDao().updateStartDateBySemesterId(existing.id, importedStartDate)
+                }
+                existing.id
+            } else {
+                dao.insert(
+                    SemesterEntity(
+                        code = semester.code,
+                        name = semester.name,
+                        startDate = semester.startDate,
+                        endDate = semester.endDate,
+                    ),
+                )
+            }
             db.courseDao().deleteBySemester(semesterId)
-            db.courseDao().insertAll(courses.map { it.toEntity(semesterId) })
+            db.courseDao().insertAll(normalizedCourses.map { it.toEntity(semesterId) })
+            ImportResult.Success(semesterId, normalizedCourses.size)
         }
-        val dbCount = db.courseDao().countBySemester(semesterId)
-        Log.d(TAG, "insert: ${courses.size} 门 -> DB count=$dbCount (semesterId=$semesterId, overwrite=$overwrite)")
-        return ImportResult.Success(semesterId, courses.size)
+        if (result is ImportResult.Success) {
+            Log.d(TAG, "insert: ${result.count} 门 -> DB count=${result.count} (semesterId=${result.semesterId}, overwrite=$overwrite)")
+        }
+        return result
     }
 
     /** 手动添加课程（MANUAL）。 */
-    suspend fun addCourse(semesterId: Long, course: Course) {
+    override suspend fun addCourse(semesterId: Long, course: Course) {
         db.courseDao().insert(course.toEntity(semesterId))
     }
 
     /** 更新课程颜色（用户自定义优先）。 */
-    suspend fun updateCourseColor(courseId: Long, color: String) {
+    override suspend fun updateCourseColor(courseId: Long, color: String) {
         db.courseDao().updateColor(courseId, color)
     }
 
     /** 设置学期开始日期（yyyy-MM-dd），用于当前周计算。 */
-    suspend fun updateSemesterStartDate(semesterId: Long, startDate: String) {
+    override suspend fun updateSemesterStartDate(semesterId: Long, startDate: String) {
         db.withTransaction {
             db.semesterDao().updateStartDate(semesterId, startDate)
             // TimetableViewModel 观察课表表并据此计算 actualWeek；同步更新可立即触发响应式刷新。
@@ -136,36 +153,36 @@ class CourseRepository(private val db: AppDatabase) {
     }
 
     /** 更新课程备注。 */
-    suspend fun updateCourseNote(courseId: Long, note: String) {
+    override suspend fun updateCourseNote(courseId: Long, note: String) {
         db.courseDao().updateNote(courseId, note)
     }
 
     /** 更新课程名称。 */
-    suspend fun updateCourseName(courseId: Long, name: String) {
+    override suspend fun updateCourseName(courseId: Long, name: String) {
         db.courseDao().updateName(courseId, name)
     }
 
     /** 更新教师。 */
-    suspend fun updateCourseTeacher(courseId: Long, teacher: String) {
+    override suspend fun updateCourseTeacher(courseId: Long, teacher: String) {
         db.courseDao().updateTeacher(courseId, teacher)
     }
 
     /** 更新地点。 */
-    suspend fun updateCourseLocation(courseId: Long, location: String) {
+    override suspend fun updateCourseLocation(courseId: Long, location: String) {
         db.courseDao().updateLocation(courseId, location)
     }
 
     /** 删除单门课程（不影响学期/课表）。 */
-    suspend fun deleteCourse(courseId: Long) {
+    override suspend fun deleteCourse(courseId: Long) {
         db.courseDao().deleteById(courseId)
     }
 
     /** 持续观察全部翘课课程 ID。 */
-    fun observeSkippedCourseIds(): Flow<Set<Long>> =
+    override fun observeSkippedCourseIds(): Flow<Set<Long>> =
         db.skippedCourseDao().observeSkippedCourseIds().map { it.toSet() }
 
     /** 保存课程管理页的翘课多选结果（事务内同步增删）。 */
-    suspend fun saveSkippedCourses(courseIds: Collection<Long>) {
+    override suspend fun saveSkippedCourses(courseIds: Collection<Long>) {
         val desired = courseIds.toSet()
         db.withTransaction {
             val current = db.skippedCourseDao().getSkippedCourseIds().toSet()
@@ -191,7 +208,7 @@ class CourseRepository(private val db: AppDatabase) {
     }
 
     /** 按课表观察全部课程（课程管理页 / 后续 Widget 用）。 */
-    fun observeCoursesByTimetable(timetableId: Long): Flow<List<Course>> =
+    override fun observeCoursesByTimetable(timetableId: Long): Flow<List<Course>> =
         db.courseDao().observeByTimetableId(timetableId).map { list -> list.map { it.toDomain() } }
 
     /** 按课表观察指定日期课程（LocalDate → 星期一=1 … 星期日=7，后续提醒用）。 */
@@ -200,11 +217,11 @@ class CourseRepository(private val db: AppDatabase) {
             .map { list -> list.map { it.toDomain() } }
 
     /** 仅删除某学期课程（保留学期记录）。 */
-    suspend fun deleteSemesterCourses(semesterId: Long) {
+    override suspend fun deleteSemesterCourses(semesterId: Long) {
         db.courseDao().deleteBySemester(semesterId)
     }
 
-    suspend fun deleteSemester(semesterId: Long) {
+    override suspend fun deleteSemester(semesterId: Long) {
         db.withTransaction {
             db.courseDao().deleteBySemester(semesterId)
             db.semesterDao().deleteById(semesterId)
@@ -235,11 +252,6 @@ class CourseRepository(private val db: AppDatabase) {
         fun autoColor(name: String): String =
             PALETTE[((name.hashCode() % PALETTE.size) + PALETTE.size) % PALETTE.size]
     }
-}
-
-sealed class ImportResult {
-    data class Success(val semesterId: Long, val count: Int) : ImportResult()
-    data object Cancelled : ImportResult()
 }
 
 /** 解析结果为空时抛出，消息中携带解析 warnings。 */

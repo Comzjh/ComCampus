@@ -12,9 +12,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
@@ -131,8 +129,10 @@ class V053ExperienceTest {
         TimetablePrefs.setCurrent(context, timetable)
         rule.setContent { MaterialTheme { TimetableSettingsScreen(onBack = {}) } }
         rule.waitForIdle()
-        rule.onRoot().performTouchInput { swipeUp() }
-        rule.onNodeWithText("紧凑顶部栏", useUnmergedTree = true).assertExists()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText("紧凑顶部栏", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("紧凑顶部栏", useUnmergedTree = true).performScrollTo().assertExists()
     }
 
     @Test

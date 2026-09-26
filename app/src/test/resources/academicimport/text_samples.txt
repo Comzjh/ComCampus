@@ -1,0 +1,8 @@
+# Sanitized text fixture. No identity fields and no original PDF bytes.
+ordinary|已修课程：微积分II-2 学分：3.0
+decimal|已完成课程：思想政治理论 学分：0.25
+planned|培养方案候选课程：有机化学 学分：3.0
+missing_credit|课程：待确认课程
+summary_only|报告摘要：已获学分 55.0
+cross_page_course|课程：跨页课程
+cross_page_credit|学分：2.0

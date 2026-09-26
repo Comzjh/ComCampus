@@ -1,12 +1,12 @@
 package com.xmu.course.ui.course
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.xmu.course.data.CourseRepository
 import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.contracts.CourseManagementContract
+import com.xmu.course.contracts.TimetableObservationContract
+import com.xmu.course.di.AppContainer
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.Timetable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,10 +35,10 @@ data class CourseManagerUiState(
  * 所有课程修改统一走 CourseRepository，UI 不直接操作 DAO。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class CourseManagerViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val courseRepo = CourseRepository(AppDatabase.getInstance(application))
-    private val timetableRepo = TimetableRepository(AppDatabase.getInstance(application))
+class CourseManagerViewModel(
+    private val courseRepo: CourseManagementContract,
+    private val timetableRepo: TimetableObservationContract,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CourseManagerUiState())
     val uiState: StateFlow<CourseManagerUiState> = _uiState.asStateFlow()
@@ -133,5 +133,21 @@ class CourseManagerViewModel(application: Application) : AndroidViewModel(applic
 
     fun messageShown() {
         _uiState.update { it.copy(message = null) }
+    }
+}
+
+/** 从 Application 的组合根创建课程管理 ViewModel。 */
+class CourseManagerViewModelFactory(
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass.isAssignableFrom(CourseManagerViewModel::class.java)) {
+            "Unsupported ViewModel: ${modelClass.name}"
+        }
+        return CourseManagerViewModel(
+            courseRepo = container.courseRepository,
+            timetableRepo = container.timetableRepository,
+        ) as T
     }
 }

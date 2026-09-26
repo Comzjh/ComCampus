@@ -1,5 +1,7 @@
 package com.xmu.course.ui.timetable
 
+import com.xmu.course.data.TimetableAxisStyle
+
 /**
  * 作息时间配置（依据厦大实际作息：11 节制，"中午"为午休分隔行，不计节次）。
  * UI 展示通过 [xmuSections] 读取，不在布局/界面中硬编码。
@@ -50,11 +52,20 @@ data class TimeAxisTypography(
     val spacingDp: Int,
 )
 
-/** 按格子高度返回时间轴排版，避免 50dp 及以下时段文字被裁切。 */
-fun timeAxisTypography(sectionHeightDp: Float): TimeAxisTypography {
+/**
+ * 按格子高度返回时间轴排版，避免 50dp 及以下时段文字被裁切。
+ *
+ * [periodBaseSp]/[timeBaseSp] 为用户可调基准（默认即新默认值）；
+ * 小格子时仍按同一比例缩放并以基准为上限，保证布局安全不依赖字号设置。
+ */
+fun timeAxisTypography(
+    sectionHeightDp: Float,
+    periodBaseSp: Int = TimetableAxisStyle.DEFAULT_PERIOD_FONT_SP,
+    timeBaseSp: Int = TimetableAxisStyle.DEFAULT_TIME_FONT_SP,
+): TimeAxisTypography {
     val scale = (sectionHeightDp / 62f).coerceIn(0.62f, 1.1f)
-    val number = (10 * scale).toInt().coerceIn(7, 11)
-    val time = (8 * scale).toInt().coerceIn(5, 9)
+    val number = (periodBaseSp * scale).toInt().coerceIn(7, periodBaseSp)
+    val time = (timeBaseSp * scale).toInt().coerceIn(5, timeBaseSp)
     return TimeAxisTypography(
         numberSizeSp = number,
         timeSizeSp = time,

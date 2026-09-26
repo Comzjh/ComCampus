@@ -6,8 +6,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.xmu.course.data.TimetablePrefs
 import com.xmu.course.data.TimetableRepository
 import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.data.local.TimetableConfigEntity
+import com.xmu.course.data.local.toDomain
 import com.xmu.course.domain.BackgroundType
 import com.xmu.course.domain.Course
+import com.xmu.course.domain.TimetableConfig
 import com.xmu.course.ui.timetable.TimetableLayoutEngine
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -44,6 +47,18 @@ class BackgroundSystemTest {
         context.deleteDatabase("background_persistence.db")
     }
 
+    @Test
+    fun `fresh config defaults to pure white background without overlay`() {
+        val config = TimetableConfig(timetableId = 1L)
+        assertEquals(BackgroundType.SOLID, config.backgroundType)
+        assertEquals("#FFFFFFFF", config.backgroundValue)
+        assertEquals(0f, config.overlayAlpha)
+        val entity = TimetableConfigEntity(timetableId = 1L).toDomain()
+        assertEquals(BackgroundType.SOLID, entity.backgroundType)
+        assertEquals("#FFFFFFFF", entity.backgroundValue)
+        assertEquals(0f, entity.overlayAlpha)
+    }
+
     @Test fun backgroundPerTimetableTest() = runTest {
         val a = repo.createTimetable("课表A")
         val b = repo.createTimetable("课表B")
@@ -52,8 +67,9 @@ class BackgroundSystemTest {
 
         assertEquals(BackgroundType.BUILT_IN, repo.getConfig(a.id).backgroundType)
         assertEquals("jiageng", repo.getConfig(a.id).backgroundValue)
-        assertEquals(BackgroundType.BUILT_IN, repo.getConfig(b.id).backgroundType)
-        assertEquals("jiageng", repo.getConfig(b.id).backgroundValue)
+        // Phase 16：新建课表默认纯白背景；修改课表 A 不影响课表 B 的独立配置。
+        assertEquals(BackgroundType.SOLID, repo.getConfig(b.id).backgroundType)
+        assertEquals("#FFFFFFFF", repo.getConfig(b.id).backgroundValue)
     }
 
     @Test fun backgroundPersistenceTest() = runTest {

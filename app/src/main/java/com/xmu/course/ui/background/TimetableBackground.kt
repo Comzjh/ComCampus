@@ -1,5 +1,4 @@
 package com.xmu.course.ui.background
-
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -7,9 +6,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -59,8 +63,31 @@ val solidBackgrounds = listOf(
     "米白" to "#FFF5F1E8",
 )
 
-fun solidColor(value: String?): Color =
-    runCatching { Color(android.graphics.Color.parseColor(value)) }.getOrDefault(Color(0xFF1A5799))
+fun solidColor(value: String?): Color = runCatching {
+    val hex = value?.removePrefix("#") ?: error("missing color")
+    val argb = when (hex.length) {
+        6 -> "FF$hex"
+        8 -> hex
+        else -> error("invalid color")
+    }.toLong(16)
+    Color(
+        red = ((argb shr 16) and 0xFF) / 255f,
+        green = ((argb shr 8) and 0xFF) / 255f,
+        blue = (argb and 0xFF) / 255f,
+        alpha = ((argb shr 24) and 0xFF) / 255f,
+    )
+}.getOrDefault(Color(0xFF1A5799))
+
+/**
+ * 新建课表历史上默认保存为纯白。深色系统下把这个默认白色降为主题背景，
+ * 避免课表成为一块刺眼的白色画布；其他非白色纯色保持原样。
+ */
+internal fun themedSolidColor(value: String?, darkTheme: Boolean, darkBackground: Color): Color =
+    if (darkTheme && value.equals("#FFFFFFFF", ignoreCase = true)) {
+        darkBackground
+    } else {
+        solidColor(value)
+    }
 
 fun backgroundResource(value: String?): Int? =
     xmuBackgrounds.firstOrNull { it.first == value }?.second
@@ -108,8 +135,10 @@ fun BackgroundContent(
     enableCropTransform: Boolean = false,
 ) {
     val context = LocalContext.current
-    val customImage by produceState<ImageBitmap?>(initialValue = null, config.backgroundValue) {
-        value = if (config.backgroundType == BackgroundType.CUSTOM) {
+    val isDarkTheme = isSystemInDarkTheme()
+    var customImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(config.backgroundType, config.backgroundValue) {
+        customImage = if (config.backgroundType == BackgroundType.CUSTOM) {
             loadImageBitmap(context, config.backgroundValue)
         } else {
             null
@@ -137,7 +166,13 @@ fun BackgroundContent(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(solidColor(config.backgroundValue)),
+                        .background(
+                            themedSolidColor(
+                                value = config.backgroundValue,
+                                darkTheme = isDarkTheme,
+                                darkBackground = MaterialTheme.colorScheme.background,
+                            ),
+                        ),
                 )
             }
             BackgroundType.CUSTOM -> {

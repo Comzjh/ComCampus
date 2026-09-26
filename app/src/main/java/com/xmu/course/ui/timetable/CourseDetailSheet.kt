@@ -1,15 +1,13 @@
 package com.xmu.course.ui.timetable
 
-import androidx.compose.foundation.background
+import com.xmu.course.contracts.timetable.model.TimetableMatchModel
 import com.xmu.course.domain.Course
-import androidx.compose.foundation.clickable
+import com.xmu.course.domain.cleanImportedCourseName
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -23,15 +21,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-
-/** 课程详情可改的颜色。 */
-private val EDITABLE_COLORS = listOf(
-    "#FAAC8F", "#FDCF93", "#93D36E", "#7FD4E0",
-    "#A79FE1", "#F49BC1", "#8FBCFA", "#E8C877",
-)
+import com.xmu.course.ui.components.CourseColorSelector
+import com.xmu.course.ui.components.DEFAULT_COURSE_COLOR
 
 /**
  * 课程详情 BottomSheet：完整信息 + 备注 + 颜色修改。
@@ -40,6 +35,7 @@ private val EDITABLE_COLORS = listOf(
 @Composable
 fun CourseDetailSheet(
     course: Course,
+    tronCourseMatch: TimetableMatchModel? = null,
     isSkipped: Boolean,
     onDismiss: () -> Unit,
     onToggleSkipped: (Boolean) -> Unit,
@@ -47,8 +43,12 @@ fun CourseDetailSheet(
     onNoteChange: (String) -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-            Text(course.name, style = MaterialTheme.typography.titleLarge)
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            Text(cleanImportedCourseName(course.name), style = MaterialTheme.typography.titleLarge)
             Text(
                 text = "第 ${course.startSection}-${course.startSection + course.duration - 1} 节 · " +
                     "周 ${course.weeks.sorted().joinToString(",")}",
@@ -63,6 +63,18 @@ fun CourseDetailSheet(
             DetailRow("星期", "星期${"日一二三四五六".substring(course.dayOfWeek % 7, course.dayOfWeek % 7 + 1)}")
             DetailRow("备注", course.note.ifBlank { "未填写" })
             DetailRow("状态", if (isSkipped) "已标记翘课" else "正常")
+            tronCourseMatch?.let { match ->
+                HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                Text("畅课", style = MaterialTheme.typography.titleMedium)
+                DetailRow("课程名称", match.name)
+                DetailRow("教师", match.instructor.ifBlank { "未提供" })
+                DetailRow("学期", match.semester.ifBlank { "未提供" })
+                Text(
+                    "课程资料、作业、通知入口将在后续版本接入",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                )
+            }
             Button(
                 onClick = { onToggleSkipped(!isSkipped) },
                 modifier = Modifier
@@ -76,29 +88,26 @@ fun CourseDetailSheet(
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                EDITABLE_COLORS.forEach { hex ->
-                    val selected = course.color.equals(hex, ignoreCase = true)
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                Color(android.graphics.Color.parseColor(hex)),
-                                CircleShape,
-                            )
-                            .clickable { onColorChange(hex) },
-                        contentAlignment = androidx.compose.ui.Alignment.Center,
-                    ) {
-                        if (selected) {
-                            Text("✓", color = Color.White, style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                }
-            }
+            CourseDetailColorSelector(
+                selectedColor = course.color.ifBlank { DEFAULT_COURSE_COLOR },
+                onColorChange = onColorChange,
+            )
             androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp))
         }
     }
 }
+
+@Composable
+internal fun CourseDetailColorSelector(
+    selectedColor: String,
+    onColorChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) = CourseColorSelector(
+    selectedColor = selectedColor,
+    onColorChange = onColorChange,
+    modifier = modifier,
+    testTag = "course_detail_colors",
+)
 
 @Composable
 private fun DetailRow(label: String, value: String) {

@@ -46,9 +46,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.xmu.course.AppLinks
 import com.xmu.course.R
 
-private const val PROJECT_URL = "https://github.com/your-name/XMU-Course"
+internal const val PROJECT_URL = AppLinks.REPOSITORY_URL
 
 private data class SupportImage(
     @DrawableRes val resourceId: Int,
@@ -121,9 +122,9 @@ fun SupportScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(padding),
         ) {
             item {
-                Text("支持 XMU Course", style = MaterialTheme.typography.headlineSmall)
+                Text("支持 ComCampus", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "XMU Course 是一个面向厦大学生的开源课表项目。如果这个项目帮助到了你，欢迎支持开发。",
+                    "ComCampus 是一个面向厦大学生的开源课表项目。如果这个项目帮助到了你，欢迎支持开发。",
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }

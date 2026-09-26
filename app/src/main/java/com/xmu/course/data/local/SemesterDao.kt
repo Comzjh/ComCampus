@@ -25,6 +25,12 @@ interface SemesterDao {
     @Query("SELECT * FROM semesters WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): SemesterEntity?
 
+    @Query("DELETE FROM semesters")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM semesters")
+    suspend fun countAll(): Int
+
     @Query("DELETE FROM semesters WHERE id = :semesterId")
     suspend fun deleteById(semesterId: Long)
 

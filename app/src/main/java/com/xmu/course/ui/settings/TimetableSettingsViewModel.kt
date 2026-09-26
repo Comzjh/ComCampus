@@ -3,10 +3,9 @@ package com.xmu.course.ui.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xmu.course.XmuCourseApplication
 import com.xmu.course.data.DisplaySettings
 import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.local.AppDatabase
 import com.xmu.course.domain.TimetableConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +33,8 @@ data class TimetableSettingsUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimetableSettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val timetableRepo = TimetableRepository(AppDatabase.getInstance(application))
+    private val timetableRepo = (application as? XmuCourseApplication)?.appContainer?.timetableRepository
+        ?: error("TimetableSettingsViewModel requires XmuCourseApplication")
 
     private val _uiState = MutableStateFlow(TimetableSettingsUiState())
     val uiState: StateFlow<TimetableSettingsUiState> = _uiState.asStateFlow()

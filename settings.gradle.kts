@@ -28,5 +28,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "XMU Course"
+rootProject.name = "ComCampus"
 include(":app")
+include(":domain")
+include(":core-contracts")

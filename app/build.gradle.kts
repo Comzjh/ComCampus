@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val appVersionName = providers.gradleProperty("appVersionName").orElse("0.9.1").get()
+val appVersionCode = providers.gradleProperty("appVersionCode").orElse("91").get().toInt()
+
 // 发布签名只从本机 keystore.properties 读取，文件已加入 .gitignore。
 val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
 val releaseKeystoreProperties = Properties().apply {
@@ -21,11 +24,11 @@ android {
         buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.xmu.course"
+        applicationId = "com.comcampus.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "0.6.3"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     testOptions {
@@ -63,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -78,17 +82,28 @@ tasks.matching { it.name == "assembleRelease" }.configureEach {
         val storePath = releaseKeystoreProperties.getProperty("storeFile")
         val store = storePath?.takeIf { it.isNotBlank() }?.let { rootProject.file(it) }
         val requiredKeys = listOf("storePassword", "keyAlias", "keyPassword")
-        if (store == null || !store.exists() || requiredKeys.any { releaseKeystoreProperties.getProperty(it).isNullOrBlank() }) {
+        val missingInputs = buildList {
+            if (storePath.isNullOrBlank()) add("storeFile")
+            else if (store == null || !store.exists()) add("configured keystore file")
+            requiredKeys.forEach { key ->
+                if (releaseKeystoreProperties.getProperty(key).isNullOrBlank()) add(key)
+            }
+        }
+        if (missingInputs.isNotEmpty()) {
             throw GradleException(
-                "缺少 release 签名配置。请复制 keystore.properties.example，生成本地 keystore 后再执行 assembleRelease。",
+                "Release signing setup is incomplete (${missingInputs.joinToString()}). " +
+                    "Configure the local ignored keystore.properties without putting credential values in Git.",
             )
         }
     }
 }
 
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":core-contracts"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -98,6 +113,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.haze)
 
     // Widget: Jetpack Glance AppWidget。
     implementation(libs.androidx.glance.appwidget)
@@ -106,6 +122,12 @@ dependencies {
     // 数据层：Phase 3/4 启用（依赖先行声明，避免反复改构建文件）
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.moshi)
+    implementation(libs.moshi.kotlin)
+    implementation(libs.pdfbox.android)
     ksp(libs.androidx.room.compiler)
     implementation(libs.jsoup)
 

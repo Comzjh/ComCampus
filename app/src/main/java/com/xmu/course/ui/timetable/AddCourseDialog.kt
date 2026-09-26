@@ -4,7 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -17,11 +21,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.xmu.course.data.CourseRepository
+import com.xmu.course.data.timetable.TimetableInputHelper
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.CourseSource
-import com.xmu.course.parser.WeekPatternParser
 
 /**
  * 手动添加课程对话框。
@@ -30,27 +34,33 @@ import com.xmu.course.parser.WeekPatternParser
  */
 @Composable
 fun AddCourseDialog(
+    initialDayOfWeek: Int? = null,
+    initialStartSection: Int? = null,
     onDismiss: () -> Unit,
     onSave: (Course) -> Unit,
 ) {
+    // dayOfWeek 约定与金智解析器一致：星期一=1 … 星期日=7。
+    val dayNames = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+    val initialStart = initialStartSection?.coerceIn(1, TimeTableConfig.sectionCount) ?: 1
     var name by remember { mutableStateOf("") }
     var teacher by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var dayText by remember { mutableStateOf("星期一") }
-    var startSectionText by remember { mutableStateOf("1") }
-    var endSectionText by remember { mutableStateOf("2") }
+    var dayText by remember(initialDayOfWeek) {
+        mutableStateOf(dayNames.getOrNull((initialDayOfWeek ?: 1) - 1) ?: dayNames.first())
+    }
+    var startSectionText by remember(initialStartSection) { mutableStateOf(initialStart.toString()) }
+    var endSectionText by remember(initialStartSection) {
+        mutableStateOf((initialStart + 1).coerceAtMost(TimeTableConfig.sectionCount).toString())
+    }
     var weeksText by remember { mutableStateOf("1-16周") }
     var error by remember { mutableStateOf<String?>(null) }
-
-    // dayOfWeek 约定与金智解析器一致：星期一=1 … 星期日=7。
-    val dayNames = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
 
     fun buildCourse(): Course? {
         val day = dayNames.indexOf(dayText) + 1
         val start = startSectionText.toIntOrNull() ?: return null
         val end = endSectionText.toIntOrNull() ?: return null
         val duration = end - start + 1
-        val weeks = WeekPatternParser.parse(weeksText)
+        val weeks = TimetableInputHelper.parseWeeks(weeksText)
         if (name.isBlank() || day !in 1..7 || start !in 1..TimeTableConfig.sectionCount ||
             end !in start..TimeTableConfig.sectionCount || weeks.isEmpty()
         ) {
@@ -65,7 +75,7 @@ fun AddCourseDialog(
             duration = duration,
             weeks = weeks,
             source = CourseSource.MANUAL,
-            color = CourseRepository.autoColor(name.trim()),
+            color = TimetableInputHelper.autoColor(name.trim()),
         )
     }
 
@@ -73,7 +83,15 @@ fun AddCourseDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加课程") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .testTag("add_course_dialog_scroll_content"),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedTextField(name, { name = it }, label = { Text("课程名称 *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth())

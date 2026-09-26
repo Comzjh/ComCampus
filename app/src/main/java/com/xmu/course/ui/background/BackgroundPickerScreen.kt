@@ -53,9 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xmu.course.XmuCourseApplication
 import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.local.AppDatabase
 import com.xmu.course.domain.BackgroundType
 import com.xmu.course.domain.TimetableConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -74,7 +73,8 @@ data class BackgroundUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackgroundPickerViewModel(application: Application) : AndroidViewModel(application) {
-    private val repo = TimetableRepository(AppDatabase.getInstance(application))
+    private val repo = (application as? XmuCourseApplication)?.appContainer?.timetableRepository
+        ?: error("BackgroundPickerViewModel requires XmuCourseApplication")
     private val _state = MutableStateFlow(BackgroundUiState())
     val state: StateFlow<BackgroundUiState> = _state.asStateFlow()
 

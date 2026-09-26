@@ -4,25 +4,27 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xmu.course.data.CourseRepository
+import com.xmu.course.contracts.timetable.TimetableFeatureRepository
+import com.xmu.course.contracts.timetable.ViewWeekPreference
+import com.xmu.course.contracts.timetable.model.TimetableMatchModel
 import com.xmu.course.data.DisplaySettings
-import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.data.TimetableAxisStyle
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.Timetable
 import com.xmu.course.domain.TimetableConfig
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
+import java.time.Duration
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import java.time.ZonedDateTime
 
 /** 课表页 UI 状态。 */
 data class TimetableUiState(
@@ -41,100 +43,95 @@ data class TimetableUiState(
     val hasData: Boolean = false,
     /** 网格线为全局设置（不属于课表配置）。 */
     val showGrid: Boolean = true,
-)
-
-/** combine 组包：全局网格线 + prefs 当前课表 ID。 */
-private data class UiSources(
-    val showGrid: Boolean,
-    val prefsTimetableId: Long?,
+    /** 已同步畅课课程与本地课程的运行时关联，不写入本地课表表结构。 */
+    val tronCourseLinks: Map<Long, TimetableMatchModel> = emptyMap(),
 )
 
 /**
  * 课表 ViewModel。
  *
  * 数据流（全响应式）：
- * 显示设置 + TimetablePrefs.currentTimetableId
- * → TimetableRepository.observeTimetable
- * → combine(observeCourses, observeConfig)
+ * TimetableFeatureRepository.observeCurrentTimetableState + 显示设置
  * → StateFlow → Compose。
  */
-@OptIn(ExperimentalCoroutinesApi::class)
-class TimetableViewModel(application: Application) : AndroidViewModel(application) {
-
-    // 注意：保持 (Application) 单参构造，viewModel() 的 AndroidViewModelFactory 依赖反射创建；
-    // Phase 4 曾加过带默认值的 db 参数导致闪退（NoSuchMethodException），勿改回。
-    private val db = AppDatabase.getInstance(application)
-    private val courseRepo = CourseRepository(db)
-    private val timetableRepo = TimetableRepository(db)
+class TimetableViewModel(
+    application: Application,
+    private val repository: TimetableFeatureRepository,
+    private val viewWeekPreference: ViewWeekPreference,
+    /** 时间轴文字样式：全局显示偏好，由组合根注入；默认用于测试。 */
+    val axisStyle: StateFlow<TimetableAxisStyle> = MutableStateFlow(TimetableAxisStyle()),
+    private val clock: Clock = Clock.systemDefaultZone(),
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(TimetableUiState())
     val uiState: StateFlow<TimetableUiState> = _uiState.asStateFlow()
+    private var dateBoundaryJob: Job? = null
+
 
     init {
         viewModelScope.launch {
             combine(
+                repository.observeCurrentTimetableState(),
                 DisplaySettings.showGrid,
-                TimetablePrefs.currentTimetableId,
-            ) { showGrid, prefsId -> UiSources(showGrid, prefsId) }
-                .flatMapLatest { (showGrid, prefsId) ->
-                    timetableRepo.observeTimetables().flatMapLatest { timetables ->
-                        if (timetables.isEmpty()) {
-                            flowOf(
-                                TimetableUiState(
-                                    isLoading = false, hasData = false, showGrid = showGrid,
-                                ),
-                            )
-                        } else {
-                            // prefs 无效（未设置/课表已删）→ 回退第一张并写回 prefs。
-                            val chosen = timetables.firstOrNull { it.timetable.id == prefsId }?.timetable
-                                ?: timetables.first().timetable
-                            if (chosen.id != prefsId) {
-                                TimetablePrefs.setCurrent(getApplication(), chosen.id)
-                            }
-                            timetableRepo.observeTimetable(chosen.id).flatMapLatest { tt ->
-                                val timetable = tt ?: chosen
-                                combine(
-                                    courseRepo.observeCourses(timetable.semesterId),
-                                    timetableRepo.observeConfig(timetable.id),
-                                    courseRepo.observeSkippedCourseIds(),
-                                ) { courses, config, skipped ->
-                                    val actualWeek = computeCurrentWeek(timetable)
-                                        .coerceIn(1, timetable.totalWeeks)
-                                    val viewWeek = resolveViewWeek(
-                                        previousTimetableId = _uiState.value.timetable?.id,
-                                        previousViewWeek = _uiState.value.viewWeek,
-                                        timetableId = timetable.id,
-                                        savedViewWeek = TimetablePrefs.getViewWeek(
-                                            getApplication(), timetable.id,
-                                        ),
-                                        actualWeek = actualWeek,
-                                        totalWeeks = timetable.totalWeeks,
-                                    )
-                                    TimetableUiState(
-                                        timetable = timetable,
-                                        courses = courses,
-                                        skippedCourseIds = skipped,
-                                        config = config,
-                                        actualWeek = actualWeek,
-                                        viewWeek = viewWeek,
-                                        totalWeeks = timetable.totalWeeks,
-                                        isLoading = false,
-                                        hasData = true,
-                                        showGrid = showGrid,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                .collect { newState ->
-                    Log.d(
-                        "XmuImport",
-                        "ViewModel emit: timetable=${newState.timetable?.name}/id=${newState.timetable?.id}, " +
-                            "actual=${newState.actualWeek}, view=${newState.viewWeek}, courses=${newState.courses.size}",
+            ) { featureState, showGrid ->
+                val timetable = featureState.timetable
+                if (timetable == null) {
+                    TimetableUiState(isLoading = false, hasData = false, showGrid = showGrid)
+                } else {
+                    val actualWeek = computeCurrentWeek(timetable, LocalDate.now(clock))
+                        .coerceIn(1, timetable.totalWeeks)
+                    val viewWeek = resolveViewWeek(
+                        previousTimetableId = _uiState.value.timetable?.id,
+                        previousViewWeek = _uiState.value.viewWeek,
+                        timetableId = timetable.id,
+                        savedViewWeek = viewWeekPreference.getViewWeek(timetable.id),
+                        actualWeek = actualWeek,
+                        totalWeeks = timetable.totalWeeks,
                     )
+                    TimetableUiState(
+                        timetable = timetable,
+                        courses = featureState.courses,
+                        skippedCourseIds = featureState.skippedCourseIds,
+                        config = featureState.config,
+                        actualWeek = actualWeek,
+                        viewWeek = viewWeek,
+                        totalWeeks = timetable.totalWeeks,
+                        isLoading = false,
+                        hasData = true,
+                        showGrid = showGrid,
+                        tronCourseLinks = featureState.timetableLinks,
+                    )
+                }
+            }
+                .collect { newState ->
                     _uiState.value = newState
                 }
+        }
+    }
+
+    /** App 恢复时立即重算实际周，并等待前台后续的本地日期边界。 */
+    fun onForeground() {
+        refreshActualWeek()
+        dateBoundaryJob?.cancel()
+        dateBoundaryJob = viewModelScope.launch {
+            while (isActive) {
+                delay(millisUntilNextLocalMidnight(clock))
+                refreshActualWeek()
+            }
+        }
+    }
+
+    /** App 进入后台后停止日界等待；恢复时会按当前时钟重新计算。 */
+    fun onBackground() {
+        dateBoundaryJob?.cancel()
+        dateBoundaryJob = null
+    }
+
+    private fun refreshActualWeek(today: LocalDate = LocalDate.now(clock)) {
+        _uiState.update { state ->
+            val timetable = state.timetable ?: return@update state
+            val actualWeek = computeCurrentWeek(timetable, today)
+            if (actualWeek == state.actualWeek) state else state.copy(actualWeek = actualWeek)
         }
     }
 
@@ -144,7 +141,7 @@ class TimetableViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.update { it.copy(viewWeek = coerced) }
         val timetable = _uiState.value.timetable
         if (timetable != null) {
-            TimetablePrefs.setViewWeek(getApplication(), timetable.id, coerced)
+            viewWeekPreference.setViewWeek(timetable.id, coerced)
         }
     }
 
@@ -158,25 +155,22 @@ class TimetableViewModel(application: Application) : AndroidViewModel(applicatio
             Log.w("XmuImport", "addCourse: 无当前课表，忽略")
             return
         }
-        viewModelScope.launch { courseRepo.addCourse(timetable.semesterId, course) }
+        viewModelScope.launch { repository.addCourse(course) }
     }
 
     /** 用户修改课程颜色。 */
     fun updateCourseColor(courseId: Long, color: String) {
-        viewModelScope.launch { courseRepo.updateCourseColor(courseId, color) }
+        viewModelScope.launch { repository.updateCourseColor(courseId, color) }
     }
 
     /** 保存课程备注。 */
     fun updateCourseNote(courseId: Long, note: String) {
-        viewModelScope.launch { courseRepo.updateCourseNote(courseId, note) }
+        viewModelScope.launch { repository.updateCourseNote(courseId, note) }
     }
 
     /** 课程详情：标记 / 取消翘课。 */
     fun toggleCourseSkipped(courseId: Long, skipped: Boolean) {
-        viewModelScope.launch {
-            if (skipped) courseRepo.markCourseSkipped(courseId)
-            else courseRepo.unmarkCourseSkipped(courseId)
-        }
+        viewModelScope.launch { repository.setCourseSkipped(courseId, skipped) }
     }
 
     companion object {
@@ -201,12 +195,42 @@ class TimetableViewModel(application: Application) : AndroidViewModel(applicatio
 
         /** 根据课表开始日期计算教学周；startDate 未设置时返回 1。 */
         fun computeCurrentWeek(timetable: Timetable, today: LocalDate = LocalDate.now()): Int {
-            val start = timetable.startDate?.let {
-                runCatching { LocalDate.parse(it) }.getOrNull()
-            } ?: return 1
-            if (today.isBefore(start)) return 1
-            val days = ChronoUnit.DAYS.between(start, today)
-            return ((days / 7) + 1).toInt()
+            return TimetableCalendar.currentWeek(timetable, today)
+        }
+
+        internal fun millisUntilNextLocalMidnight(clock: Clock): Long {
+            val now = ZonedDateTime.now(clock)
+            val nextMidnight = now.toLocalDate().plusDays(1).atStartOfDay(clock.zone)
+            return Duration.between(now, nextMidnight).toMillis().coerceAtLeast(1L)
+        }
+    }
+}
+
+/** 从 Application 的组合根创建课表 ViewModel。 */
+class TimetableViewModelFactory(
+    private val application: Application,
+    private val repository: TimetableFeatureRepository,
+    private val viewWeekPreference: ViewWeekPreference,
+    private val axisStyle: StateFlow<TimetableAxisStyle>,
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass.isAssignableFrom(TimetableViewModel::class.java)) {
+            "Unsupported ViewModel: ${modelClass.name}"
+        }
+        return TimetableViewModel(application, repository, viewWeekPreference, axisStyle) as T
+    }
+
+    companion object {
+        fun fromApplication(application: Application): TimetableViewModelFactory {
+            val app = application as? com.xmu.course.XmuCourseApplication
+                ?: error("TimetableViewModel requires XmuCourseApplication")
+            return TimetableViewModelFactory(
+                application = application,
+                repository = app.appContainer.timetableFeatureRepository,
+                viewWeekPreference = app.appContainer.timetableViewWeekPreference,
+                axisStyle = app.appContainer.timetableAxisStyle,
+            )
         }
     }
 }

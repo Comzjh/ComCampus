@@ -1,27 +1,40 @@
 package com.xmu.course.ui.import
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xmu.course.data.CourseRepository
-import com.xmu.course.data.ImportPreparation
-import com.xmu.course.data.ImportResult
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.XmuCourseApplication
+import com.xmu.course.data.import.ImportPreparation
+import com.xmu.course.data.import.ImportResult
 import com.xmu.course.domain.Course
+import com.xmu.course.domain.Semester
+import com.xmu.course.domain.isValidFirstWeekStartDate
+import com.xmu.course.ui.OneShotToken
+import com.xmu.course.ui.import.model.ImportConflictModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-private const val TAG = "XmuImport"
+import java.time.Instant
+import java.time.ZoneOffset
 
 /** 导入页 UI 状态。[conflict] 非 null 时 UI 弹出“覆盖/取消”对话框。 */
 data class ImportUiState(
     val message: String? = null,
-    val conflict: ImportPreparation.Conflict? = null,
+    val importCompleted: Boolean = false,
+    /** 一次性完成令牌：每次成功导入 +1，导航层据此去重回跳（BUG-01）。 */
+    val completionToken: Long = 0L,
+    val conflict: ImportConflictModel? = null,
+    val shouldShowStartDatePicker: Boolean = false,
+    val startDateError: String? = null,
+)
+
+private data class PendingStartDate(
+    val semester: Semester,
+    val courses: List<Course>,
+    val overwrite: Boolean,
+    val source: String,
 )
 
 /**
@@ -29,13 +42,23 @@ data class ImportUiState(
  */
 class ImportViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = CourseRepository(AppDatabase.getInstance(application))
-
-    // 导入成功后为学期绑定课表（细节隐藏在 TimetableRepository 内）。
-    private val timetableRepository = TimetableRepository(AppDatabase.getInstance(application))
+    private val importCoordinator = (application as? XmuCourseApplication)
+        ?.appContainer
+        ?.importCoordinator
+        ?: error("ImportViewModel requires XmuCourseApplication")
+    private var pendingConflict: ImportPreparation.Conflict? = null
+    private var pendingStartDate: PendingStartDate? = null
 
     private val _uiState = MutableStateFlow(ImportUiState())
     val uiState: StateFlow<ImportUiState> = _uiState.asStateFlow()
+    private val completionClaim = OneShotToken()
+
+    /**
+     * 消费"导入成功"事件：同一令牌只有第一次调用返回 true。
+     *
+     * 导航回跳归属集中在这里，导入页与 WebView 页不再各自竞速 popBackStack。
+     */
+    fun claimImportCompletion(): Boolean = completionClaim.claim(_uiState.value.completionToken)
 
     /** 保存 WebView 抓取的 HTML 并导入数据库。 */
     fun saveCourseHtml(html: String) {
@@ -52,38 +75,28 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun import(html: String, source: String) {
-        // 调试日志：确认 Parser 输入包含课表内容（Bug 1 排查用）。
-        Log.d(
-            TAG,
-            "import($source): html.length=${html.length}, hasGrid=${html.contains("jsTbl_01")}, " +
-                "hasArrage=${html.contains("arrage")}, head=${html.take(500).replace('\n', ' ')}",
-        )
         viewModelScope.launch {
             try {
-                when (val prep = repository.prepareImport(html)) {
+                when (val prep = importCoordinator.prepareImport(html)) {
                     is ImportPreparation.Ready -> {
-                        Log.d(TAG, "parser 输出：${prep.courses.size} 门课程")
-                        when (val r = repository.commitImport(prep.semester, prep.courses, overwrite = false)) {
-                            is ImportResult.Success -> {
-                                timetableRepository.ensureForSemester(r.semesterId, prep.semester.name, prep.semester.startDate)
-                                _uiState.update {
-                                    it.copy(message = importSuccessMessage(prep.semester.name, r.count, prep.courses))
-                                }
-                            }
-                            ImportResult.Cancelled ->
-                                _uiState.update { it.copy(message = "导入已取消") }
-                        }
+                        continueImport(prep, overwrite = false, source)
                     }
                     is ImportPreparation.Conflict -> {
-                        Log.d(TAG, "parser 输出：冲突（新 ${prep.pendingCourses.size} 门）")
-                        _uiState.update { it.copy(conflict = prep) }
+                        pendingConflict = prep
+                        _uiState.update {
+                            it.copy(
+                                conflict = ImportConflictModel(
+                                    semester = prep.semester,
+                                    existingCount = prep.existingCount,
+                                    newCount = prep.newCount,
+                                ),
+                            )
+                        }
                     }
                 }
             } catch (e: com.xmu.course.data.ImportEmptyException) {
-                Log.w(TAG, "解析结果为空：${e.warnings}")
                 _uiState.update { it.copy(message = e.message) }
             } catch (e: Exception) {
-                Log.e(TAG, "导入失败", e)
                 _uiState.update { it.copy(message = "$source 失败：${e.message}") }
             }
         }
@@ -91,29 +104,84 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
 
     /** 用户确认覆盖导入。 */
     fun confirmOverwrite() {
-        val conflict = _uiState.value.conflict ?: return
+        val conflict = pendingConflict ?: return
+        pendingConflict = null
         _uiState.update { it.copy(conflict = null) }
-        viewModelScope.launch {
-            when (val r = repository.commitImport(conflict.semester, conflict.pendingCourses, overwrite = true)) {
-                is ImportResult.Success -> {
-                    timetableRepository.ensureForSemester(r.semesterId, conflict.semester.name, conflict.semester.startDate)
-                    _uiState.update {
-                        it.copy(message = importSuccessMessage(conflict.semester.name, r.count, conflict.pendingCourses))
-                    }
-                }
-                ImportResult.Cancelled ->
-                    _uiState.update { it.copy(message = "导入已取消") }
-            }
-        }
+        continueImport(conflict, overwrite = true, source = "覆盖导入")
     }
 
     /** 用户取消覆盖。 */
     fun cancelOverwrite() {
+        pendingConflict = null
         _uiState.update { it.copy(conflict = null, message = "导入已取消") }
     }
 
+    fun cancelStartDate() {
+        pendingStartDate = null
+        _uiState.update { it.copy(shouldShowStartDatePicker = false, startDateError = null, message = "导入已取消") }
+    }
+
+    fun confirmStartDate(selectedDateMillis: Long?) {
+        val pending = pendingStartDate ?: return
+        val date = selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+        if (date == null) {
+            _uiState.update { it.copy(startDateError = "请选择第一周星期一作为开学日期") }
+            return
+        }
+        if (!isValidFirstWeekStartDate(date)) {
+            _uiState.update { it.copy(startDateError = "开学日期必须是星期一，请选择第一周的星期一") }
+            return
+        }
+        pendingStartDate = null
+        _uiState.update { it.copy(shouldShowStartDatePicker = false, startDateError = null) }
+        commitPreparation(pending.semester.copy(startDate = date.toString()), pending.courses, pending.overwrite)
+    }
+
     fun messageShown() {
-        _uiState.update { it.copy(message = null) }
+        _uiState.update { it.copy(message = null, importCompleted = false) }
+    }
+
+    private fun continueImport(preparation: ImportPreparation, overwrite: Boolean, source: String) {
+        val semester = when (preparation) {
+            is ImportPreparation.Ready -> preparation.semester
+            is ImportPreparation.Conflict -> preparation.semester
+        }
+        val courses = when (preparation) {
+            is ImportPreparation.Ready -> preparation.courses
+            is ImportPreparation.Conflict -> preparation.pendingCourses
+        }
+        if (semester.startDate == null) {
+            pendingStartDate = PendingStartDate(semester, courses, overwrite, source)
+            _uiState.update {
+                it.copy(
+                    shouldShowStartDatePicker = true,
+                    startDateError = null,
+                )
+            }
+        } else {
+            commitPreparation(semester, courses, overwrite)
+        }
+    }
+
+    private fun commitPreparation(semester: Semester, courses: List<Course>, overwrite: Boolean) {
+        viewModelScope.launch {
+            try {
+                when (val r = importCoordinator.commitImport(semester, courses, overwrite)) {
+                    is ImportResult.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                message = importSuccessMessage(semester.name, r.count, courses),
+                                importCompleted = true,
+                                completionToken = it.completionToken + 1,
+                            )
+                        }
+                    }
+                    ImportResult.Cancelled -> _uiState.update { it.copy(message = "导入已取消") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(message = "导入失败，请稍后重试") }
+            }
+        }
     }
 
     /** 成功提示：学期 + 课程数 + 周数范围。 */

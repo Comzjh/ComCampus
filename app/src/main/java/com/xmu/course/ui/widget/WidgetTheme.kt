@@ -34,6 +34,15 @@ object WidgetTheme {
     // 翘课课程统一按约 0.45 alpha 呈现，仍保留名称、时间和地点。
     val disabledText = androidx.compose.ui.graphics.Color(0x73FFFFFF)
 
+    /** 倒计时前缀的轻量语义色；标题和课程元数据仍使用原有文字色。 */
+    fun todoUrgencyColor(urgency: TodoUrgency): androidx.compose.ui.graphics.Color = when (urgency) {
+        TodoUrgency.NORMAL -> androidx.compose.ui.graphics.Color(0xFFE6EEF7)
+        TodoUrgency.UPCOMING -> androidx.compose.ui.graphics.Color(0xFFFFD166)
+        TodoUrgency.URGENT -> androidx.compose.ui.graphics.Color(0xFFFFA45B)
+        TodoUrgency.CRITICAL -> androidx.compose.ui.graphics.Color(0xFFFF8078)
+        TodoUrgency.OVERDUE -> androidx.compose.ui.graphics.Color(0xFFFF5C5C)
+    }
+
     @Composable
     fun isDarkTheme(): Boolean {
         val uiMode = LocalContext.current.resources.configuration.uiMode

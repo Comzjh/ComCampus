@@ -21,6 +21,12 @@ interface SkippedCourseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(item: SkippedCourseEntity)
 
+    @Query("DELETE FROM skipped_courses")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM skipped_courses")
+    suspend fun countAll(): Int
+
     @Query("DELETE FROM skipped_courses WHERE courseId IN (:courseIds)")
     suspend fun deleteByCourseIds(courseIds: List<Long>)
 

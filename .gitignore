@@ -31,3 +31,10 @@ debug_import.html
 *.keystore
 keystore.properties
 
+# Phase 14.3 repo hygiene: local-only / generated directories (narrow, explicit)
+/password/
+/tmp/
+/.kotlin/
+/visualizations/
+/release-output/
+

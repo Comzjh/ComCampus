@@ -6,13 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.xmu.course.data.tronclass.model.TronCourseEntity
+import com.xmu.course.data.tronclass.repository.TronCourseDao
+import com.xmu.course.data.tronclass.assignment.TronTodoSyncMetadataDao
+import com.xmu.course.data.tronclass.assignment.TronTodoSyncMetadataEntity
+import com.xmu.course.data.todo.TodoDao
+import com.xmu.course.data.todo.model.TodoEntity
 
 /**
- * 应用数据库。导出 schema 目录暂未配置，破坏性变更期间 fallbackToDestructiveMigration。
+ * 应用数据库。导出 schema 目录暂未配置；所有已发布版本变更均使用显式 Migration，
+ * 不使用 destructiveMigration。
  */
 @Database(
-    entities = [SemesterEntity::class, CourseEntity::class, TimetableEntity::class, TimetableConfigEntity::class, SkippedCourseEntity::class],
-    version = 9,
+    entities = [SemesterEntity::class, CourseEntity::class, TimetableEntity::class, TimetableConfigEntity::class, SkippedCourseEntity::class, TronCourseEntity::class, TodoEntity::class, TronTodoSyncMetadataEntity::class, AcademicRecordEntity::class],
+    version = 14,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -21,6 +28,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun courseDao(): CourseDao
     abstract fun timetableDao(): TimetableDao
     abstract fun skippedCourseDao(): SkippedCourseDao
+    abstract fun tronCourseDao(): TronCourseDao
+    abstract fun todoDao(): TodoDao
+    abstract fun tronTodoSyncMetadataDao(): TronTodoSyncMetadataDao
+    abstract fun academicRecordDao(): AcademicRecordDao
 
     companion object {
         @Volatile private var instance: AppDatabase? = null
@@ -32,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "xmu_course.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                     .build().also { instance = it }
             }
 
@@ -169,6 +180,87 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_skipped_courses_courseId` " +
                         "ON `skipped_courses` (`courseId`)",
+                )
+            }
+        }
+
+        /** v9 -> v10：新增独立 TronClass 课程缓存表，不触碰已有课程表。 */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `tron_courses` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`tronCourseId` INTEGER NOT NULL, " +
+                        "`name` TEXT NOT NULL, " +
+                        "`semester` TEXT NOT NULL, " +
+                        "`instructor` TEXT NOT NULL, " +
+                        "`updatedTime` INTEGER NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_tron_courses_tronCourseId` " +
+                        "ON `tron_courses` (`tronCourseId`)",
+                )
+            }
+        }
+
+        /** v10 -> v11：新增独立待办表，不触碰课程或畅课缓存表。 */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `todo_items` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`description` TEXT NOT NULL, " +
+                        "`courseId` INTEGER, " +
+                        "`source` TEXT NOT NULL, " +
+                        "`deadline` INTEGER, " +
+                        "`completed` INTEGER NOT NULL, " +
+                        "`createdTime` INTEGER NOT NULL, " +
+                        "`updatedTime` INTEGER NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_todo_items_completed_deadline` " +
+                        "ON `todo_items` (`completed`, `deadline`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_todo_items_source_courseId` " +
+                        "ON `todo_items` (`source`, `courseId`)",
+                )
+            }
+        }
+
+        /** v11 -> v12：为待办增加外部来源幂等标识，不触碰既有待办内容。 */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE todo_items ADD COLUMN externalId TEXT")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_todo_items_source_externalId` " +
+                        "ON `todo_items` (`source`, `externalId`)",
+                )
+            }
+        }
+
+        /** v12 -> v13：新增 TronClass 待办导入 baseline 元数据表，初始为空。 */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `tron_todo_sync_metadata` (" +
+                        "`id` INTEGER NOT NULL, " +
+                        "`importBaselineAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))",
+                )
+            }
+        }
+
+        /** v13 -> v14：新增独立的已确认学业课程表，不触碰既有业务表。 */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `academic_records` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`name` TEXT NOT NULL, " +
+                        "`creditsText` TEXT NOT NULL, " +
+                        "`source` TEXT NOT NULL)",
                 )
             }
         }

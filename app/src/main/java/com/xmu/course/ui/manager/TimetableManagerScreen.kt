@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -48,10 +49,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.xmu.course.data.TimetableWithCount
+import com.xmu.course.XmuCourseApplication
+import com.xmu.course.contracts.TimetableSummary
+import com.xmu.course.ui.timetable.TimetableCalendar
+import java.time.LocalDate
 
 /**
  * 课表管理页：列表 / 点击切换 / 长按重命名删除 / 新建。
@@ -61,14 +66,20 @@ import com.xmu.course.data.TimetableWithCount
 fun TimetableManagerScreen(
     onBack: () -> Unit,
     onOpenTimetableSettings: () -> Unit = {},
-    viewModel: TimetableManagerViewModel = viewModel(),
+    viewModel: TimetableManagerViewModel = viewModel(
+        factory = TimetableManagerViewModelFactory(
+            application = LocalContext.current.applicationContext as XmuCourseApplication,
+            container = (LocalContext.current.applicationContext as XmuCourseApplication).appContainer,
+        ),
+    ),
+    today: LocalDate = LocalDate.now(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showCreateDialog by remember { mutableStateOf(false) }
-    var manageTarget by remember { mutableStateOf<TimetableWithCount?>(null) }
-    var renameTarget by remember { mutableStateOf<TimetableWithCount?>(null) }
-    var deleteTarget by remember { mutableStateOf<TimetableWithCount?>(null) }
+    var manageTarget by remember { mutableStateOf<TimetableSummary?>(null) }
+    var renameTarget by remember { mutableStateOf<TimetableSummary?>(null) }
+    var deleteTarget by remember { mutableStateOf<TimetableSummary?>(null) }
 
     // 操作结果提示。
     LaunchedEffect(state.message) {
@@ -109,19 +120,24 @@ fun TimetableManagerScreen(
             }
         } else {
             Column(Modifier.padding(innerPadding).padding(horizontal = 12.dp)) {
-                if (state.timetables.size > 1) {
-                    Text(
-                        "点击切换当前课表，长按管理",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
-                }
+                Text(
+                    if (state.timetables.size > 1) {
+                        "点击切换当前课表；长按可重命名或删除"
+                    } else {
+                        "长按课表可重命名或删除"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                        .testTag("timetable_management_hint"),
+                )
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.timetables, key = { it.timetable.id }) { item ->
                         TimetableCard(
                             item = item,
                             isCurrent = item.timetable.id == state.currentId,
+                            today = today,
                             onClick = { viewModel.select(item.timetable.id) },
                             onLongClick = { manageTarget = item },
                         )
@@ -229,10 +245,16 @@ fun TimetableManagerScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteTimetable(target.timetable.id)
-                    deleteTarget = null
-                }) { Text("删除") }
+                TextButton(
+                    onClick = {
+                        viewModel.deleteTimetable(target.timetable.id)
+                        deleteTarget = null
+                    },
+                    modifier = Modifier.testTag("timetable_delete_confirm"),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) { Text("删除") }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("取消") }
@@ -245,15 +267,17 @@ fun TimetableManagerScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimetableCard(
-    item: TimetableWithCount,
+    item: TimetableSummary,
     isCurrent: Boolean,
+    today: LocalDate,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .testTag("timetable_card_${item.timetable.id}"),
         border = if (isCurrent) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Row(
@@ -273,7 +297,7 @@ private fun TimetableCard(
             Column(Modifier.weight(1f)) {
                 Text(item.timetable.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "第 ${item.timetable.currentWeek} 周 · " +
+                    "第 ${TimetableCalendar.currentWeek(item.timetable, today)} 周 · " +
                         (item.timetable.startDate?.let { "开学 $it" } ?: "开学日期未设置"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

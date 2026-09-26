@@ -67,7 +67,7 @@ fun TodayCourseContent(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(
-                text = "XMU Course",
+                text = "ComCampus",
                 style = widgetTextStyle(
                     color = WidgetTheme.textPrimary,
                     size = 13.sp,

@@ -1,8 +1,6 @@
 package com.xmu.course.ui.import
 
-import android.content.Context
 import android.webkit.CookieManager
-import android.webkit.WebStorage
 import android.webkit.WebView
 
 /**
@@ -11,7 +9,7 @@ import android.webkit.WebView
  * 设计原则：
  * - 永不保存用户名/密码，登录完全由用户在 WebView 中完成；
  * - 登录态依赖 android.webkit.CookieManager 的持久化 Cookie（App 私有目录）；
- * - 提供统一的“清除登录状态”入口（Cookie + WebView 缓存 + Web 存储）。
+ * - Wisedu 注销必须由经过真实链路审计的 scoped cleanup 负责；本类不提供全局清理。
  */
 object WebSessionManager {
 
@@ -28,22 +26,4 @@ object WebSessionManager {
         CookieManager.getInstance().flush()
     }
 
-    /**
-     * 清除登录状态：Cookie、WebView 缓存、Web 存储（localStorage 等）。
-     * 用户数据文件（如已保存的课表 HTML）不受影响。
-     */
-    fun clear(context: Context, webView: WebView? = null) {
-        CookieManager.getInstance().apply {
-            removeAllCookies(null)
-            removeSessionCookies(null)
-            flush()
-        }
-        webView?.apply {
-            clearCache(true)
-            clearFormData()
-            clearHistory()
-        }
-        WebStorage.getInstance().deleteAllData()
-        context.cacheDir.deleteRecursively()
-    }
 }

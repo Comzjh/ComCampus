@@ -73,7 +73,7 @@ fun NextCourseContent(
     nowMinuteOfDay: Int,
     style: WidgetBackgroundStyle = WidgetTheme.defaultStyle,
 ) {
-    val title = if (next == null) "今日无课程" else "下一节课"
+    val title = nextCourseTitle(next, nowMinuteOfDay)
     val time = next?.startTime ?: "--:--"
     val name = next?.name ?: "休息一下"
     val location = next?.location?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: ""
@@ -147,4 +147,10 @@ fun NextCourseContent(
     }
 }
 
+/** 复用选择器已有的时间字段，只修正 Widget 标题的展示语义。 */
+internal fun nextCourseTitle(next: WidgetCourse?, nowMinuteOfDay: Int): String = when {
+    next == null -> "今日无课程"
+    nowMinuteOfDay in next.startMinuteOfDay until next.endMinuteOfDay -> "正在上课"
+    else -> "下一节课"
+}
 

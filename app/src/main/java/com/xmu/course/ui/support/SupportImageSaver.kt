@@ -18,7 +18,7 @@ object SupportImageSaver {
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, "$fileName.jpg")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/XMU Course")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/ComCampus")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
             val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
@@ -37,7 +37,7 @@ object SupportImageSaver {
             }
         } else {
             runCatching {
-                MediaStore.Images.Media.insertImage(resolver, bitmap, fileName, "XMU Course 支持开发") != null
+                MediaStore.Images.Media.insertImage(resolver, bitmap, fileName, "ComCampus 支持开发") != null
             }.getOrDefault(false)
         }
     }

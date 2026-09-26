@@ -2,11 +2,13 @@ package com.xmu.course.ui.manager
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.TimetableRepository
-import com.xmu.course.data.TimetableWithCount
-import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.contracts.TimetableManagementContract
+import com.xmu.course.contracts.TimetableSummary
+import com.xmu.course.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +18,7 @@ import kotlinx.coroutines.launch
 
 /** 课表管理页 UI 状态。 */
 data class TimetableManagerUiState(
-    val timetables: List<TimetableWithCount> = emptyList(),
+    val timetables: List<TimetableSummary> = emptyList(),
     val currentId: Long? = null,
     val message: String? = null,
 )
@@ -24,9 +26,10 @@ data class TimetableManagerUiState(
 /**
  * 课表管理 ViewModel：列表 / 切换 / 重命名 / 删除 / 新建。
  */
-class TimetableManagerViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repo = TimetableRepository(AppDatabase.getInstance(application))
+class TimetableManagerViewModel(
+    application: Application,
+    private val repo: TimetableManagementContract,
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(TimetableManagerUiState())
     val uiState: StateFlow<TimetableManagerUiState> = _uiState.asStateFlow()
@@ -90,5 +93,22 @@ class TimetableManagerViewModel(application: Application) : AndroidViewModel(app
 
     fun messageShown() {
         _uiState.update { it.copy(message = null) }
+    }
+}
+
+/** 从 Application 的组合根创建课表管理 ViewModel。 */
+class TimetableManagerViewModelFactory(
+    private val application: Application,
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass.isAssignableFrom(TimetableManagerViewModel::class.java)) {
+            "Unsupported ViewModel: ${modelClass.name}"
+        }
+        return TimetableManagerViewModel(
+            application = application,
+            repo = container.timetableRepository,
+        ) as T
     }
 }

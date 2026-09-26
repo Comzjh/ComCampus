@@ -15,6 +15,16 @@ interface CourseDao {
     @Query("SELECT * FROM courses WHERE semesterId = :semesterId ORDER BY dayOfWeek, startSection")
     suspend fun getBySemester(semesterId: Long): List<CourseEntity>
 
+    /** 供待办课程选择器读取全部本地课程；不改变现有课表查询。 */
+    @Query("SELECT * FROM courses ORDER BY name, id")
+    suspend fun getAll(): List<CourseEntity>
+
+    @Query("DELETE FROM courses")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM courses")
+    suspend fun countAll(): Int
+
     @Query("SELECT COUNT(*) FROM courses WHERE semesterId = :semesterId")
     suspend fun countBySemester(semesterId: Long): Int
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.TextHorizontalAlignment
 import com.xmu.course.domain.TextVerticalAlignment
+import com.xmu.course.domain.cleanImportedCourseName
 
 /** 课程名 hash → 默认卡片色（与 Repository 导入配色一致的多彩风格）。 */
 private val PALETTE = listOf(
@@ -65,6 +67,20 @@ private fun verticalAlignment(value: TextVerticalAlignment): Alignment.Vertical 
     TextVerticalAlignment.BOTTOM -> Alignment.Bottom
 }
 
+/**
+ * Phase 9 视觉降饱和：仅在渲染层向同亮度灰靠拢，
+ * 保持课程间可区分、不改布局算法、不改存储颜色。
+ */
+internal fun Color.desaturateForRender(amount: Float = 0.22f): Color {
+    val lum = luminance()
+    return Color(
+        red = red + (lum - red) * amount,
+        green = green + (lum - green) * amount,
+        blue = blue + (lum - blue) * amount,
+        alpha = alpha,
+    )
+}
+
 private fun textAlign(value: TextHorizontalAlignment): TextAlign = when (value) {
     TextHorizontalAlignment.START -> TextAlign.Start
     TextHorizontalAlignment.CENTER -> TextAlign.Center
@@ -89,10 +105,12 @@ fun CourseCard(
     cardAlpha: Float = 1f,
     textHorizontalAlignment: TextHorizontalAlignment = TextHorizontalAlignment.CENTER,
     textVerticalAlignment: TextVerticalAlignment = TextVerticalAlignment.CENTER,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val container = if (isSkipped) Color(0xFF8A8A8A) else courseCardColor(course)
-    // 字号设置直接控制课程名；地点/教师略小，保证窄列信息密度。
+    val container = (if (isSkipped) Color(0xFF8A8A8A) else courseCardColor(course)).desaturateForRender()
+    // 响应式布局只改变卡片宽度，不应把正常课程的标题永久压成 8sp。
+    // 保留 compact 参数兼容新版调用方，但沿用稳定版的字号上下限。
     val titleTextSize = textSize.coerceIn(8, 18)
     val secondaryText = (textSize - 2).coerceIn(7, 16)
     val alignment = horizontalAlignment(textHorizontalAlignment)
@@ -111,7 +129,8 @@ fun CourseCard(
         horizontalAlignment = alignment,
         content = {
             Text(
-                text = course.name,
+                // 兼容旧数据库：即使课程是在名称清洗上线前导入的，课表卡片也不再显示班号。
+                text = cleanImportedCourseName(course.name),
                 color = Color.White,
                 fontSize = titleTextSize.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -143,6 +162,7 @@ fun CourseCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = textAlign,
+                    modifier = Modifier.testTag("course_card_teacher"),
                 )
             }
             // 空间不足时隐藏顺序：备注；地点/教师始终保留。

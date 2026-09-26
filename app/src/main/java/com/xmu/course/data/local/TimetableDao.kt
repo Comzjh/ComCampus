@@ -55,6 +55,18 @@ interface TimetableDao {
     @Query("UPDATE timetables SET color = :color WHERE id = :id")
     suspend fun updateColor(id: Long, color: String)
 
+    @Query("DELETE FROM timetables")
+    suspend fun deleteAll()
+
+    @Query("DELETE FROM timetable_configs")
+    suspend fun deleteAllConfigs()
+
+    @Query("SELECT COUNT(*) FROM timetables")
+    suspend fun countAll(): Int
+
+    @Query("SELECT COUNT(*) FROM timetable_configs")
+    suspend fun countConfigs(): Int
+
     @Query("DELETE FROM timetables WHERE id = :id")
     suspend fun deleteById(id: Long)
 

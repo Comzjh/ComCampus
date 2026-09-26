@@ -7,7 +7,9 @@ import com.xmu.course.domain.Course
 import com.xmu.course.domain.CourseSource
 import com.xmu.course.domain.Timetable
 import com.xmu.course.ui.timetable.TimetableLayoutEngine
+import com.xmu.course.ui.timetable.TimetableCalendar
 import com.xmu.course.ui.timetable.TimetableViewModel
+import com.xmu.course.ui.widget.WidgetRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -47,13 +49,22 @@ class WeekSelectorTest {
     private val timetable = Timetable(id = 1L, name = "A", semesterId = 11L, totalWeeks = 25)
 
     @Test fun `actualWeek按开学日期计算`() {
-        // 开学当天 = 第1周周一；第7天仍在第1周；第8天进入第2周。
-        val t = timetable.copy(startDate = "2026-09-14")
-        assertEquals(1, TimetableViewModel.computeCurrentWeek(t, LocalDate.parse("2026-09-14")))
-        assertEquals(1, TimetableViewModel.computeCurrentWeek(t, LocalDate.parse("2026-09-20")))
-        assertEquals(2, TimetableViewModel.computeCurrentWeek(t, LocalDate.parse("2026-09-21")))
-        // 开学前回退第1周。
-        assertEquals(1, TimetableViewModel.computeCurrentWeek(t, LocalDate.parse("2026-09-01")))
+        val t = timetable.copy(startDate = "2026-09-07", currentWeek = 1)
+        val cases = listOf(
+            LocalDate.parse("2026-09-06") to 1, // semester start - 1 day
+            LocalDate.parse("2026-09-07") to 1, // week 1 starts
+            LocalDate.parse("2026-09-13") to 1, // week 1 ends
+            LocalDate.parse("2026-09-14") to 2, // week 2 boundary
+            LocalDate.parse("2026-09-20") to 2, // week 2 ends
+            LocalDate.parse("2026-09-21") to 3, // week 3 boundary
+            LocalDate.parse("2026-09-23") to 3, // current known week
+        )
+
+        cases.forEach { (date, expectedWeek) ->
+            assertEquals(expectedWeek, TimetableCalendar.currentWeek(t, date))
+            assertEquals(expectedWeek, TimetableViewModel.computeCurrentWeek(t, date))
+            assertEquals(expectedWeek, WidgetRepository.computeCurrentWeek(t, date))
+        }
     }
 
     @Test fun `viewWeek默认等于actualWeek`() {

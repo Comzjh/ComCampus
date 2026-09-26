@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.xmu.course.data.CourseRepository
-import com.xmu.course.data.ImportPreparation
-import com.xmu.course.data.ImportResult
+import com.xmu.course.data.import.ImportPreparation
+import com.xmu.course.data.import.ImportResult
 import com.xmu.course.data.local.AppDatabase
 import com.xmu.course.data.local.toDomain
 import com.xmu.course.domain.Course

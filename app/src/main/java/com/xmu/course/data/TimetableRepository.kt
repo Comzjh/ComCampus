@@ -7,17 +7,14 @@ import com.xmu.course.data.local.TimetableConfigEntity
 import com.xmu.course.data.local.TimetableWithCount as EntityWithCount
 import com.xmu.course.data.local.toDomain
 import com.xmu.course.data.local.toEntity
+import com.xmu.course.contracts.TimetableImportContract
+import com.xmu.course.contracts.TimetableManagementContract
+import com.xmu.course.contracts.TimetableObservationContract
+import com.xmu.course.contracts.TimetableSummary
 import com.xmu.course.domain.Timetable
 import com.xmu.course.domain.TimetableConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-/** 课表列表项（领域层，含课程数量、是否自定义课表）。 */
-data class TimetableWithCount(
-    val timetable: Timetable,
-    val courseCount: Int,
-    val isCustom: Boolean,
-)
 
 /**
  * 多课表仓库。
@@ -25,25 +22,31 @@ data class TimetableWithCount(
  * 自定义课表通过隐藏学期（code = "custom-*"）承载课程，
  * 导入课表则复用导入时创建的学期；两者在删除时的处理不同。
  */
-class TimetableRepository(private val db: AppDatabase) {
+class TimetableRepository(private val db: AppDatabase) :
+    TimetableImportContract,
+    TimetableManagementContract,
+    TimetableObservationContract {
 
     private val dao get() = db.timetableDao()
 
     /** 观察全部课表（含课程数量，按创建时间倒序）。 */
-    fun observeTimetables(): Flow<List<TimetableWithCount>> =
+    override fun observeTimetables(): Flow<List<TimetableSummary>> =
         dao.observeAllWithCount().map { list -> list.map { it.toDomain() } }
 
     suspend fun getTimetable(id: Long): Timetable? = dao.getById(id)?.toDomain()
 
     /** 持续观察单个课表（当前课表切换用）。 */
-    fun observeTimetable(id: Long): Flow<Timetable?> =
+    override fun observeTimetable(id: Long): Flow<Timetable?> =
         dao.observeById(id).map { it?.toDomain() }
 
     /**
      * 创建课表：自动创建隐藏学期 + 默认外观配置。
      * @return 新课表（含生成的 id）
      */
-    suspend fun createTimetable(name: String, startDate: String? = null): Timetable {
+    override suspend fun createTimetable(name: String): Timetable =
+        createTimetable(name, startDate = null)
+
+    suspend fun createTimetable(name: String, startDate: String?): Timetable {
         val now = System.currentTimeMillis()
         val semesterId = db.semesterDao().insert(
             SemesterEntity(code = "custom-$now", name = name),
@@ -72,7 +75,7 @@ class TimetableRepository(private val db: AppDatabase) {
      * 导入成功后调用：为该学期绑定课表；已绑定则直接返回（幂等）。
      * 与 [createTimetable] 不同，不创建隐藏学期，直接复用导入学期。
      */
-    suspend fun ensureForSemester(semesterId: Long, name: String, startDate: String?): Timetable {
+    override suspend fun ensureForSemester(semesterId: Long, name: String, startDate: String?): Timetable {
         getBySemesterId(semesterId)?.let {
             Log.d(TAG, "ensureForSemester: semesterId=$semesterId already bound to timetable ${it.id}")
             return it
@@ -100,7 +103,7 @@ class TimetableRepository(private val db: AppDatabase) {
     suspend fun getBySemesterId(semesterId: Long): Timetable? =
         dao.getBySemesterId(semesterId)?.toDomain()
 
-    suspend fun rename(id: Long, name: String) = dao.rename(id, name)
+    override suspend fun rename(id: Long, name: String) = dao.rename(id, name)
 
     /** 修改"当前周"（手动设置真实当前周，与查看周选择器区分）。 */
     suspend fun updateCurrentWeek(id: Long, week: Int) = dao.updateCurrentWeek(id, week)
@@ -114,7 +117,7 @@ class TimetableRepository(private val db: AppDatabase) {
      * 自定义课表（隐藏学期承载）连同学期与课程一起删除；
      * 导入课表只删除课表记录，学期与课程保留。
      */
-    suspend fun deleteTimetable(id: Long) {
+    override suspend fun deleteTimetable(id: Long) {
         val timetable = dao.getById(id) ?: return
         val semester = db.semesterDao().getById(timetable.semesterId)
         if (semester != null && semester.code.startsWith("custom-")) {
@@ -141,7 +144,7 @@ class TimetableRepository(private val db: AppDatabase) {
     suspend fun updateBackground(config: TimetableConfig) = saveConfig(config)
 
     private fun EntityWithCount.toDomain() =
-        TimetableWithCount(
+        TimetableSummary(
             timetable = timetable.toDomain(),
             courseCount = courseCount,
             isCustom = isCustom,

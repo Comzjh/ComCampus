@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
@@ -9,10 +10,22 @@
     <application
     android:name=".XmuCourseApplication"
         android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.XMUCourse">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_file_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -22,6 +35,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.tronclass.auth.TronClassAuthActivity"
+            android:exported="false"
+            android:process=":tronclass_auth"
+            android:theme="@style/Theme.XMUCourse" />
         <receiver
             android:name=".ui.widget.TodayCourseWidgetReceiver"
             android:exported="true">
@@ -41,6 +59,16 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/next_course_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".ui.widget.TodoWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todo_widget_info" />
         </receiver>
     </application>
 

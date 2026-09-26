@@ -1,7 +1,9 @@
 <resources>
-    <string name="app_name">XMU Course</string>
+    <string name="app_name">ComCampus</string>
     <string name="widget_today_course_name">今日课程</string>
     <string name="widget_next_course_name">下一节课</string>
     <string name="widget_today_course_description">在桌面查看今天的课程、时间和地点</string>
     <string name="widget_next_course_description">在桌面查看下一节课和倒计时</string>
+    <string name="widget_todo_name">待办</string>
+    <string name="widget_todo_description">在桌面查看未完成待办</string>
 </resources>

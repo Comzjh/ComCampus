@@ -7,7 +7,7 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.xmu.course.data.TimetablePrefs
-import com.xmu.course.data.local.AppDatabase
+import com.xmu.course.data.widget.WidgetDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,32 +28,17 @@ object WidgetUpdater {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** Application 启动时调用，保持 Widget 跟随当前课表和 Room 数据。 */
-    fun start(context: Context) {
+    fun start(
+        context: Context,
+        dataSource: WidgetDataSource = WidgetDataSource.from(context),
+    ) {
         val appContext = context.applicationContext
         TimetablePrefs.load(appContext)
-        val db = AppDatabase.getInstance(appContext)
         // 应用启动或桌面首次添加组件时，先登记一次分钟刷新；后续由 receiver 续期。
         scheduleMinuteRefresh(appContext)
 
-        // 课程 / 翘课状态变化。查询按课表关联，切换当前课表也会触发。
         appScope.launch {
-            TimetablePrefs.currentTimetableId.collectLatest { _ ->
-                db.courseDao().observeByTimetableId(
-                    TimetablePrefs.currentTimetableId.value
-                        ?: db.timetableDao().getAll().firstOrNull()?.id ?: return@collectLatest,
-                ).collectLatest {
-                    updateAll(appContext)
-                }
-            }
-        }
-        appScope.launch {
-            db.skippedCourseDao().observeSkippedCourseIds().collectLatest {
-                updateAll(appContext)
-            }
-        }
-        // 课表名称 / 日期 / 当前周变化。
-        appScope.launch {
-            db.timetableDao().observeAllWithCount().collectLatest {
+            dataSource.observeInvalidation().collectLatest {
                 updateAll(appContext)
             }
         }
@@ -68,6 +53,9 @@ object WidgetUpdater {
         }
         manager.getGlanceIds(NextCourseWidget::class.java).forEach { glanceId ->
             NextCourseWidget().update(appContext, glanceId)
+        }
+        manager.getGlanceIds(TodoWidget::class.java).forEach { glanceId ->
+            TodoWidget().update(appContext, glanceId)
         }
     }
 

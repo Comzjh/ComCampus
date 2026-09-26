@@ -30,8 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xmu.course.XmuCourseApplication
 import com.xmu.course.domain.Course
 
 /**
@@ -41,7 +43,11 @@ import com.xmu.course.domain.Course
 @Composable
 fun SkipCourseScreen(
     onBack: () -> Unit,
-    viewModel: CourseManagerViewModel = viewModel(),
+    viewModel: CourseManagerViewModel = viewModel(
+        factory = CourseManagerViewModelFactory(
+            (LocalContext.current.applicationContext as XmuCourseApplication).appContainer,
+        ),
+    ),
 ) {
     val state by viewModel.uiState.collectAsState()
     var selected by remember(state.skippedCourseIds) { mutableStateOf(state.skippedCourseIds) }
@@ -117,6 +123,11 @@ fun SkipCourseScreen(
 private fun SkipCourseLabel(course: Course) {
     Column(Modifier.padding(start = 4.dp)) {
         Text(course.name, style = MaterialTheme.typography.titleSmall)
+        Text(
+            skipCourseScheduleLabel(course),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         val detail = listOf(course.teacher, course.location).filter { it.isNotBlank() }
         if (detail.isNotEmpty()) {
             Text(
@@ -126,4 +137,16 @@ private fun SkipCourseLabel(course: Course) {
             )
         }
     }
+}
+
+internal fun skipCourseScheduleLabel(course: Course): String {
+    val weekday = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+        .getOrNull(course.dayOfWeek - 1)
+        ?: "星期${course.dayOfWeek}"
+    val sectionLabel = if (course.duration <= 1) {
+        "第${course.startSection}节"
+    } else {
+        "第${course.startSection}-${course.startSection + course.duration - 1}节"
+    }
+    return "$weekday · $sectionLabel · ${weeksLabel(course.weeks)}"
 }

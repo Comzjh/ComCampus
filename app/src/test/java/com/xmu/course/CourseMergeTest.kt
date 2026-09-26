@@ -24,18 +24,60 @@ class CourseMergeTest {
         assertEquals(4, merged[0].duration)
     }
 
-    @Test fun `节次相邻的同课也合并`() {
+    @Test fun `不同课程但节次不同不合并`() {
         val merged = TimetableLayoutEngine.mergeSameCourse(
-            listOf(course(1, 1, 2, (1..8).toSet()), course(1, 3, 2, (9..16).toSet())),
+            listOf(
+                course(1, 1, 2, (1..8).toSet(), "上午课"),
+                course(1, 3, 2, (9..16).toSet(), "下午课"),
+            ),
+        )
+        assertEquals(2, merged.size)
+    }
+
+    @Test fun `同一课程的分段记录合并为完整时间段`() {
+        val merged = TimetableLayoutEngine.mergeSameCourse(
+            listOf(
+                course(2, 1, 2, setOf(1)),
+                course(2, 3, 2, setOf(1)),
+            ),
         )
         assertEquals(1, merged.size)
-        assertEquals(4, merged[0].duration)
-        assertEquals((1..16).toSet(), merged[0].weeks)
+        assertEquals(1, merged.single().startSection)
+        assertEquals(4, merged.single().duration)
+    }
+
+    @Test fun `不同周次课程先过滤后各自独立布局`() {
+        val merged = TimetableLayoutEngine.mergeSameCourse(
+            listOf(
+                course(2, 1, 4, setOf(1)),
+                course(2, 1, 4, setOf(2)),
+            ),
+        )
+        val week1 = TimetableLayoutEngine.layoutForWeek(merged, week = 1)
+            .getValue(2)
+            .filter { it.isCurrentWeek }
+        val week2 = TimetableLayoutEngine.layoutForWeek(merged, week = 2)
+            .getValue(2)
+            .filter { it.isCurrentWeek }
+        assertEquals(1, week1.size)
+        assertEquals(1, week2.size)
+        assertEquals(1, week1.single().laneCount)
+        assertEquals(1, week2.single().laneCount)
     }
 
     @Test fun `不同课不合并`() {
         val merged = TimetableLayoutEngine.mergeSameCourse(
             listOf(course(2, 1, 2, (1..16).toSet(), "物理"), course(2, 1, 2, (1..16).toSet(), "化学")),
+        )
+        assertEquals(2, merged.size)
+    }
+
+    @Test fun `同名同教师但地点不同不合并`() {
+        val merged = TimetableLayoutEngine.mergeSameCourse(
+            listOf(
+                course(4, 7, 2, (2..16 step 2).toSet()).copy(location = "嘉庚五603"),
+                course(4, 7, 2, (2..16 step 2).toSet()).copy(location = "嘉庚五605"),
+            ),
         )
         assertEquals(2, merged.size)
     }
@@ -46,7 +88,7 @@ class CourseMergeTest {
             week = 1,
         )
         val items = layout[2]!!
-        // 本周记录 1 张 active 卡（1-2 周），非本周记录（3-16 周）作为独立 ghost 淡化显示
+        // 当前周过滤后合并，非当前周记录不参与当前周布局。
         val active = items.filter { it.isCurrentWeek }
         val ghost = items.filter { !it.isCurrentWeek }
         assertEquals(1, active.size)

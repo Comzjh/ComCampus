@@ -3,7 +3,6 @@ package com.xmu.course.ui.course
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,6 +22,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -50,18 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xmu.course.XmuCourseApplication
 import com.xmu.course.domain.Course
 import com.xmu.course.ui.timetable.AddCourseDialog
-
-/** 编辑弹层颜色候选（与自动配色一致）。 */
-private val COLOR_PALETTE = listOf(
-    "#FAAC8F", "#FDCF93", "#93D36E", "#7FD4E0",
-    "#A79FE1", "#F49BC1", "#8FBCFA", "#E8C877",
-)
+import com.xmu.course.ui.components.CourseColorSelector
+import com.xmu.course.ui.components.DEFAULT_COURSE_COLOR
 
 /**
  * 课程管理页：当前课表全部课程的两列卡片列表。
@@ -72,7 +73,11 @@ private val COLOR_PALETTE = listOf(
 fun CourseManagerScreen(
     onBack: () -> Unit,
     onOpenSkipCourses: () -> Unit = {},
-    viewModel: CourseManagerViewModel = viewModel(),
+    viewModel: CourseManagerViewModel = viewModel(
+        factory = CourseManagerViewModelFactory(
+            (LocalContext.current.applicationContext as XmuCourseApplication).appContainer,
+        ),
+    ),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -339,12 +344,16 @@ private fun CourseEditSheet(
     var teacher by remember { mutableStateOf(course.teacher) }
     var location by remember { mutableStateOf(course.location) }
     var note by remember { mutableStateOf(course.note) }
-    var color by remember { mutableStateOf(course.color.ifBlank { COLOR_PALETTE.first() }) }
+    var color by remember { mutableStateOf(course.color.ifBlank { DEFAULT_COURSE_COLOR }) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .heightIn(max = 600.dp)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .testTag("course_edit_scroll_content")
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -354,27 +363,17 @@ private fun CourseEditSheet(
             OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(note, { note = it }, label = { Text("备注") }, modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                COLOR_PALETTE.forEach { candidate ->
-                    val selected = candidate == color
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(runCatching { Color(android.graphics.Color.parseColor(candidate)) }.getOrDefault(Color.Gray))
-                            .then(
-                                if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                                else Modifier
-                            )
-                            .clickable { color = candidate },
-                    )
-                }
-            }
+            CourseColorSelector(
+                selectedColor = color,
+                onColorChange = { color = it },
+                testTag = "course_edit_color_palette",
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("取消") }
                 Button(
                     onClick = { onSave(name, teacher, location, note, color) },
                     enabled = name.isNotBlank(),
+                    modifier = Modifier.testTag("course_edit_save"),
                 ) { Text("保存") }
             }
         }

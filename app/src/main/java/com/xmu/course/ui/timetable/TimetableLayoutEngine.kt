@@ -1,6 +1,7 @@
 package com.xmu.course.ui.timetable
 
 import com.xmu.course.domain.Course
+import com.xmu.course.domain.normalizeCourseName
 import com.xmu.course.domain.occursInWeek
 
 /** 一门课在某周网格中的布局位置：laneIndex/laneCount 为其所在冲突组内的横向槽位。 */
@@ -31,6 +32,7 @@ object TimetableLayoutEngine {
         onlyCurrentWeek: Boolean = false,
     ): Map<Int, List<TimetableLayoutItem>> {
         val cleaned = courses.filter { it.dayOfWeek in 1..7 }
+        // 先按 selectedWeek 过滤，再分别布局 active/ghost；不同周课程绝不互相参与碰撞。
         val active = cleaned.filter { it.occursInWeek(week) }
         val inactive = if (onlyCurrentWeek) emptyList() else cleaned.filter { !it.occursInWeek(week) }
 
@@ -50,14 +52,17 @@ object TimetableLayoutEngine {
         return result
     }
 
-    /**
-     * 合并同一天上、同名同教师同教室、节次重叠或相邻的课程记录。
-     * 例如金智把"1-2周"和"3-16周"拆成两条记录：合并后为一张 1-16 周的整卡。
-     * 不同课程名永远不会被合并（同位置允许并存多门课）。
-     */
+    /** 合并当前布局集合中的同一课程分段；不同课程名/教师/地点保持独立。 */
     fun mergeSameCourse(courses: List<Course>): List<Course> {
         return courses
-            .groupBy { listOf(it.dayOfWeek, it.name, it.teacher, it.location) }
+            .groupBy {
+                listOf(
+                    it.dayOfWeek,
+                    normalizeCourseName(it.name),
+                    it.teacher.trim(),
+                    it.location.trim(),
+                )
+            }
             .flatMap { (_, group) ->
                 val sorted = group.sortedBy { it.startSection }
                 val merged = mutableListOf(sorted.first())
