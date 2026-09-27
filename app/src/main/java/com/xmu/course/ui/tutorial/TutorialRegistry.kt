@@ -139,22 +139,27 @@ object TutorialRegistry {
                 TutorialStep(
                     TutorialTargetKey.SETTINGS_ACCOUNT,
                     "账户",
-                    "登录和账号信息在这里管理。",
+                    "打开个人中心，查看登录状态、数据来源和支持入口。",
                 ),
                 TutorialStep(
                     TutorialTargetKey.SETTINGS_APPEARANCE,
                     "外观",
-                    "深色模式和字体大小在这里调整。",
+                    "应用深浅色跟随系统；这里可开启 Android 12+ 的壁纸取色。",
                 ),
                 TutorialStep(
                     TutorialTargetKey.SETTINGS_TIMETABLE,
                     "课表显示",
-                    "课表的显示偏好在这里。",
+                    "调整当前课表的背景、网格、信息显隐和文字排版。",
+                ),
+                TutorialStep(
+                    TutorialTargetKey.SETTINGS_UPDATE,
+                    "应用更新",
+                    "发现新版本时会标出底部设置；进入设置后才显示更新提示。",
                 ),
                 TutorialStep(
                     TutorialTargetKey.SETTINGS_ABOUT,
                     "关于",
-                    "版本和更新信息在这里。",
+                    "在这里查看 ComCampus 版本和开源协议。",
                 ),
             ),
         ),

@@ -65,6 +65,7 @@ import com.xmu.course.ui.tutorial.TutorialToolbarAction
 import com.xmu.course.ui.tutorial.tutorialTarget
 import com.xmu.course.ui.theme.ThemePreferences
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /**
@@ -72,6 +73,12 @@ import java.time.ZoneId
  *
  * 只编排既有回调与 ViewModel，不新增业务逻辑。
  */
+internal fun startDatePickerMillis(startDate: String?): Long? = runCatching {
+    startDate?.let {
+        LocalDate.parse(it).atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+    }
+}.getOrNull()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreenContent(
@@ -267,10 +274,13 @@ private fun SettingsScreenContent(
             }
 
             // ---- 应用更新 ----
-            AppGroupedSection(title = "应用更新") {
+            AppGroupedSection(
+                title = "应用更新",
+                modifier = Modifier.tutorialTarget(TutorialTargetKey.SETTINGS_UPDATE),
+            ) {
                 SettingSwitch(
                     title = "自动检查更新",
-                    subtitle = "启动应用时检查 GitHub Releases，每 24 小时最多一次",
+                    subtitle = "启动应用时检查 GitHub Releases，每 24 小时最多一次；有更新时进入设置再提示",
                     checked = automaticUpdateCheckEnabled,
                     onChange = onAutomaticUpdateCheckChanged,
                 )
@@ -287,6 +297,14 @@ private fun SettingsScreenContent(
                     Text(
                         "当前已是最新版本",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (updateCheckResult is UpdateCheckResult.Available) {
+                    Text(
+                        text = "发现新版本 ${updateCheckResult.latestVersion}；点击「检查更新」可重新查看安装选项。",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag("settings_update_available"),
                     )
                 }
             }
@@ -339,7 +357,9 @@ private fun SettingsScreenContent(
 
     // ---- 开学日期选择 ----
     if (showDatePicker) {
-        val pickerState = rememberDatePickerState()
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = startDatePickerMillis(state.semester?.startDate),
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {

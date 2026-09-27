@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.Grade
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.MaterialTheme
@@ -109,6 +111,7 @@ import com.xmu.course.di.ProviderDescriptors
 import com.xmu.course.di.toContractAuthState
 import com.xmu.course.contracts.provider.ProviderManagementEntry
 import com.xmu.course.data.TimetablePrefs
+import com.xmu.course.data.update.UpdateCheckResult
 import com.xmu.course.data.privacy.TronClassDataOwner
 import com.xmu.course.data.privacy.WiseduTimetableDataOwner
 import com.xmu.course.data.privacy.AcademicImportDataOwner
@@ -549,6 +552,18 @@ fun XmuCourseApp(
     val updateFactory = remember(application) { UpdateViewModelFactory.fromApplication(application) }
     val updateViewModel: UpdateViewModel = viewModel(factory = updateFactory)
     val updateState by updateViewModel.uiState.collectAsState()
+    var updateDialog by remember { mutableStateOf<UpdateCheckResult.Available?>(null) }
+    LaunchedEffect(currentRoute, updateState.updatePromptPending, updateState.result) {
+        val isSettingsPage = isSettingsRootRoute(currentRoute)
+        if (shouldShowUpdateDialog(currentRoute, updateState.updatePromptPending)) {
+            (updateState.result as? UpdateCheckResult.Available)?.let { update ->
+                updateDialog = update
+                updateViewModel.consumeUpdatePrompt()
+            }
+        } else if (!isSettingsPage) {
+            updateDialog = null
+        }
+    }
     val todoFactory = remember(application) { TodoViewModelFactory.fromApplication(application) }
     val todoViewModel: TodoViewModel = viewModel(factory = todoFactory)
     val timetableFactory = remember(application) { TimetableViewModelFactory.fromApplication(application) }
@@ -667,15 +682,32 @@ fun XmuCourseApp(
                             selected = selected,
                             onClick = { navigateTab(destination.route) },
                             icon = {
-                                Icon(
-                                    destination.icon,
-                                    contentDescription = destination.label,
-                                    tint = tabTint,
-                                    modifier = Modifier.graphicsLayer {
-                                        scaleX = iconScale.value
-                                        scaleY = iconScale.value
+                                BadgedBox(
+                                    badge = {
+                                        if (destination == AppDestination.Profile &&
+                                            updateState.result is UpdateCheckResult.Available
+                                        ) {
+                                            Badge()
+                                        }
                                     },
-                                )
+                                ) {
+                                    Icon(
+                                        destination.icon,
+                                        contentDescription = if (
+                                            destination == AppDestination.Profile &&
+                                            updateState.result is UpdateCheckResult.Available
+                                        ) {
+                                            "${destination.label}，有可用更新"
+                                        } else {
+                                            destination.label
+                                        },
+                                        tint = tabTint,
+                                        modifier = Modifier.graphicsLayer {
+                                            scaleX = iconScale.value
+                                            scaleY = iconScale.value
+                                        },
+                                    )
+                                }
                             },
                             label = { Text(destination.label) },
                             alwaysShowLabel = true,
@@ -1115,17 +1147,25 @@ fun XmuCourseApp(
         }
     }
 
-    (updateState.result as? com.xmu.course.data.update.UpdateCheckResult.Available)?.let { update ->
-        UpdateDialog(
-            update = update,
-            onDismiss = updateViewModel::dismissResult,
-            downloading = updateState.downloading,
-            downloadedApkPath = updateState.downloadedApkPath,
-            downloadError = updateState.downloadError,
-            onDownload = { updateViewModel.download(update) },
-        )
+    if (isSettingsRootRoute(currentRoute)) {
+        updateDialog?.let { update ->
+            UpdateDialog(
+                update = update,
+                onDismiss = { updateDialog = null },
+                downloading = updateState.downloading,
+                downloadedApkPath = updateState.downloadedApkPath,
+                downloadError = updateState.downloadError,
+                onDownload = { updateViewModel.download(update) },
+            )
+        }
     }
 }
+
+internal fun isSettingsRootRoute(route: String?): Boolean =
+    route?.substringBefore('?') == AppDestination.Profile.route
+
+internal fun shouldShowUpdateDialog(route: String?, promptPending: Boolean): Boolean =
+    promptPending && isSettingsRootRoute(route)
 
 
 

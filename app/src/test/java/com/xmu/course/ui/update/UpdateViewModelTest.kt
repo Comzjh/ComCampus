@@ -32,6 +32,12 @@ class UpdateViewModelTest {
             assertEquals(1, repository.downloadCalls)
             assertEquals(apk.absolutePath, viewModel.uiState.value.downloadedApkPath)
             assertEquals(true, viewModel.uiState.value.result is UpdateCheckResult.Available)
+            assertEquals(true, viewModel.uiState.value.updatePromptPending)
+
+            viewModel.consumeUpdatePrompt()
+
+            assertEquals(false, viewModel.uiState.value.updatePromptPending)
+            assertEquals(true, viewModel.uiState.value.result is UpdateCheckResult.Available)
         } finally {
             Dispatchers.resetMain()
         }

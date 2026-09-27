@@ -25,6 +25,7 @@ object TutorialTargetKey {
     const val SETTINGS_TIMETABLE = "settings.timetable"
     const val SETTINGS_ACCOUNT = "settings.account"
     const val SETTINGS_APPEARANCE = "settings.appearance"
+    const val SETTINGS_UPDATE = "settings.update"
     const val SETTINGS_ABOUT = "settings.about"
     const val DATA_LIST = "data_management.list"
     const val DATA_DELETE = "data_management.delete"

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -24,6 +25,12 @@ import org.robolectric.annotation.Config
 class CourseCardPresentationTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun courseCardTextChoosesTheHigherContrastColor() {
+        assertEquals(Color(0xFF17202B), courseCardTextColor(Color(0xFFFDCF93)))
+        assertEquals(Color.White, courseCardTextColor(Color(0xFF202124)))
+    }
 
     @Test
     fun syntheticCourseCardRetainsItsContentAndClickAction() {

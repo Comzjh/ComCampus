@@ -288,8 +288,10 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    fun todoFeatureContractDoesNotDependOnDataImplementation() {
-        val featureRoot = sourceRoot("com", "xmu", "course", "data", "todo", "feature")
+    fun todoDomainPoliciesDoNotDependOnDataImplementation() {
+        val featureRoot = moduleSourceRoot("domain").resolve(
+            Paths.get("com", "xmu", "course", "domain", "todo"),
+        )
         val forbidden = listOf(
             "TodoEntity",
             "TodoDao",
@@ -298,6 +300,7 @@ class ArchitectureBoundaryTest {
             "UpdateTodoCommand",
             "android.",
             "androidx.",
+            "com.xmu.course.data.",
             "com.xmu.course.data.local.",
             "com.xmu.course.data.tronclass.",
         )
@@ -309,7 +312,7 @@ class ArchitectureBoundaryTest {
             }
 
         assertTrue(
-            "Todo feature contract must remain independent from data implementations: $violations",
+            "Todo domain policies must remain independent from data implementations: $violations",
             violations.isEmpty(),
         )
     }
@@ -788,7 +791,6 @@ class ArchitectureBoundaryTest {
     @Test
     fun timetableFeatureContractDoesNotExposeIntegrationInternals() {
         val featureRoots = listOf(
-            sourceRoot("com", "xmu", "course", "data", "timetable", "feature"),
             moduleSourceRoot("core-contracts").resolve(
                 Paths.get("com", "xmu", "course", "contracts", "timetable", "model"),
             ),

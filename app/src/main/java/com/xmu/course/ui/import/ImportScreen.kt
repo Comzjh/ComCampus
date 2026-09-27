@@ -7,7 +7,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,10 +40,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xmu.course.ui.components.AppGroupedSection
@@ -202,22 +207,25 @@ internal fun ImportStartDatePickerDialog(
     errorMessage: String? = null,
     initialDisplayedMonthMillis: Long? = null,
 ) {
-    ProvideSimplifiedChineseDatePickerLocale {
-        val uriHandler = LocalUriHandler.current
-        val datePickerState = androidx.compose.material3.rememberDatePickerState(
+    val uriHandler = LocalUriHandler.current
+    val datePickerState = remember {
+        DatePickerState(
+            locale = Locale.SIMPLIFIED_CHINESE,
             initialSelectedDateMillis = DEFAULT_IMPORT_START_DATE_MILLIS,
             initialDisplayedMonthMillis = initialDisplayedMonthMillis ?: DEFAULT_IMPORT_START_DATE_MILLIS,
         )
-        DatePickerDialog(
-            onDismissRequest = onDismissRequest,
-            confirmButton = {
-                TextButton(
-                    onClick = { onConfirm(datePickerState.selectedDateMillis) },
-                    enabled = datePickerState.selectedDateMillis != null,
-                ) { Text("确认导入") }
-            },
-            dismissButton = { TextButton(onClick = onDismissRequest) { Text("取消") } },
-        ) {
+    }
+    DatePickerDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(datePickerState.selectedDateMillis) },
+                enabled = datePickerState.selectedDateMillis != null,
+            ) { Text("确认导入") }
+        },
+        dismissButton = { TextButton(onClick = onDismissRequest) { Text("取消") } },
+    ) {
+        ProvideSimplifiedChineseDatePickerLocale {
             ImportStartDatePickerBody(
                 datePickerState = datePickerState,
                 errorMessage = errorMessage,
@@ -251,27 +259,36 @@ internal fun ImportStartDatePickerBody(
     errorMessage: String? = null,
     onOpenAcademicCalendar: () -> Unit,
 ) {
-    Column {
-        Text(
-            "请选择第一教学周的星期一作为开学日期",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-        )
-        TextButton(
-            onClick = onOpenAcademicCalendar,
-            modifier = Modifier.padding(start = 16.dp),
-        ) {
-            Text("查看厦大校历（2026–2027 学年）")
-        }
-        errorMessage?.let { error ->
-            Text(
-                error,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-        }
-        DatePicker(state = datePickerState, showModeToggle = false)
-    }
+    DatePicker(
+        state = datePickerState,
+        showModeToggle = false,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = errorMessage ?: "选第一教学周周一",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (errorMessage == null) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = onOpenAcademicCalendar,
+                    modifier = Modifier.padding(start = 4.dp),
+                ) {
+                    Text("厦大校历（2026–2027）", maxLines = 1)
+                }
+            }
+        },
+    )
 }
 
 /** 读取 SAF 选中的 HTML 文件为字符串；失败返回 null。 */

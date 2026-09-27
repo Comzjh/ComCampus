@@ -19,6 +19,8 @@ data class UpdateUiState(
     val automaticCheckEnabled: Boolean = true,
     val checking: Boolean = false,
     val result: UpdateCheckResult = UpdateCheckResult.NotChecked,
+    /** 新版本发现后等待用户进入设置页查看；弹窗展示后由页面消费。 */
+    val updatePromptPending: Boolean = false,
     val downloading: Boolean = false,
     val downloadedApkPath: String? = null,
     val downloadError: Boolean = false,
@@ -45,8 +47,8 @@ class UpdateViewModel(
         _uiState.update { it.copy(automaticCheckEnabled = enabled) }
     }
 
-    fun dismissResult() {
-        _uiState.update { it.copy(result = UpdateCheckResult.NotChecked) }
+    fun consumeUpdatePrompt() {
+        _uiState.update { it.copy(updatePromptPending = false) }
     }
 
     fun download(update: UpdateCheckResult.Available) {
@@ -65,9 +67,15 @@ class UpdateViewModel(
     private fun check(manual: Boolean) {
         if (_uiState.value.checking) return
         viewModelScope.launch {
-            _uiState.update { it.copy(checking = true, result = UpdateCheckResult.NotChecked) }
+            _uiState.update { it.copy(checking = true, updatePromptPending = false) }
             val result = repository.check(currentVersion, manual)
-            _uiState.update { it.copy(checking = false, result = result) }
+            _uiState.update {
+                it.copy(
+                    checking = false,
+                    result = result,
+                    updatePromptPending = result is UpdateCheckResult.Available,
+                )
+            }
             if (result is UpdateCheckResult.Available && result.apkUrl != null && result.apkDigest != null) {
                 download(result)
             }

@@ -19,6 +19,7 @@ class GuideContentTest {
         assertEquals(
             listOf(
                 GuideContent.SECTION_HOME,
+                GuideContent.SECTION_IMPORT,
                 GuideContent.SECTION_TIMETABLE,
                 GuideContent.SECTION_TODO,
                 GuideContent.SECTION_ACADEMIC,
@@ -83,6 +84,18 @@ class GuideContentTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `import chapter explains online and local paths and the Monday start date`() {
+        val section = requireNotNull(GuideContent.find(GuideContent.SECTION_IMPORT))
+        val allCopy = section.allCopy().joinToString("\n")
+
+        assertTrue(allCopy.contains("打开厦大教务"))
+        assertTrue(allCopy.contains("HTML 文件"))
+        assertTrue(allCopy.contains("第一教学周的星期一"))
+        assertTrue(allCopy.contains("厦大校历"))
+        assertNull(section.relatedTutorialId)
     }
 
     @Test

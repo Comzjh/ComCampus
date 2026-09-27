@@ -81,6 +81,19 @@ internal fun Color.desaturateForRender(amount: Float = 0.22f): Color {
     )
 }
 
+internal fun courseCardTextColor(background: Color): Color {
+    val ink = Color(0xFF17202B)
+    fun contrast(foreground: Color): Float {
+        val backgroundLuminance = background.luminance()
+        val foregroundLuminance = foreground.luminance()
+        val lighter = maxOf(backgroundLuminance, foregroundLuminance)
+        val darker = minOf(backgroundLuminance, foregroundLuminance)
+        return (lighter + 0.05f) / (darker + 0.05f)
+    }
+
+    return if (contrast(Color.White) >= contrast(ink)) Color.White else ink
+}
+
 private fun textAlign(value: TextHorizontalAlignment): TextAlign = when (value) {
     TextHorizontalAlignment.START -> TextAlign.Start
     TextHorizontalAlignment.CENTER -> TextAlign.Center
@@ -88,7 +101,7 @@ private fun textAlign(value: TextHorizontalAlignment): TextAlign = when (value) 
 }
 
 /**
- * 网格中的课程卡片（超级课程表风格：高密度、彩色底、白字）。
+ * 网格中的课程卡片（高密度彩色卡片，文字与底色保持尽可能高的对比度）。
  * 时间由左侧独立时间轴展示；卡片只显示课程名、地点、教师与备注。
  */
 @Composable
@@ -109,6 +122,7 @@ fun CourseCard(
     onClick: () -> Unit,
 ) {
     val container = (if (isSkipped) Color(0xFF8A8A8A) else courseCardColor(course)).desaturateForRender()
+    val contentColor = courseCardTextColor(container)
     // 响应式布局只改变卡片宽度，不应把正常课程的标题永久压成 8sp。
     // 保留 compact 参数兼容新版调用方，但沿用稳定版的字号上下限。
     val titleTextSize = textSize.coerceIn(8, 18)
@@ -131,7 +145,7 @@ fun CourseCard(
             Text(
                 // 兼容旧数据库：即使课程是在名称清洗上线前导入的，课表卡片也不再显示班号。
                 text = cleanImportedCourseName(course.name),
-                color = Color.White,
+                color = contentColor,
                 fontSize = titleTextSize.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = if (course.duration <= 1) 2 else 3,
@@ -143,7 +157,7 @@ fun CourseCard(
             if (showLocation && course.location.isNotBlank()) {
                 Text(
                     text = "@" + course.location,
-                    color = Color.White.copy(alpha = 0.88f),
+                    color = contentColor.copy(alpha = 0.88f),
                     fontSize = secondaryText.sp,
                     lineHeight = (secondaryText + 1).sp,
                     maxLines = 3,
@@ -156,7 +170,7 @@ fun CourseCard(
                 // 教师始终出现；窄卡里可以省略，但不允许整块消失。
                 Text(
                     text = course.teacher,
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = contentColor.copy(alpha = 0.9f),
                     fontSize = secondaryText.sp,
                     lineHeight = (secondaryText + 1).sp,
                     maxLines = 1,
@@ -171,7 +185,7 @@ fun CourseCard(
                 if (!noteOverflowed) {
                     Text(
                         text = course.note,
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = contentColor.copy(alpha = 0.8f),
                         fontSize = secondaryText.sp,
                         lineHeight = (secondaryText + 1).sp,
                         maxLines = 1,

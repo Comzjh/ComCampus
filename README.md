@@ -30,13 +30,13 @@
 ### Widget、主题与教程
 
 - 提供今日课程、下一节课和待办 Widget。
-- 支持浅色/深色模式、课表背景与显示设置，并内置使用教程和校园服务入口。
+- 支持浅色/深色模式、课表背景与显示设置，并内置覆盖导入、课表、学业、待办和个性化的分步使用教程及校园服务入口。
 
 ## 下载与更新
 
-- [下载最新稳定版](https://github.com/Comzjh/ComCampus/releases/latest)；当前公开版本为 **v0.9.2**（versionCode 92）。
+- [下载最新稳定版](https://github.com/Comzjh/ComCampus/releases/latest)；当前公开版本为 **v0.9.3**（versionCode 93）。
 - Android 8.0（API 26）及以上。
-- 应用默认在启动时每 24 小时最多检查一次 GitHub Releases。发现新版后会下载 APK 并校验 SHA-256，再交给 Android 系统安装器；安装仍由用户确认。
+- 应用默认在启动时每 24 小时最多检查一次 GitHub Releases。发现新版后，设置入口会显示提醒；进入设置页时再查看更新提示。APK 下载并校验 SHA-256 后交给 Android 系统安装器，安装仍由用户确认。
 - 包名：com.comcampus.app。
 
 ## 隐私与数据

@@ -2,6 +2,8 @@ package com.xmu.course.ui.import
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePickerState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -73,9 +75,12 @@ class ImportScreenTest {
         composeRule.setContent {
             MaterialTheme {
                 ProvideSimplifiedChineseDatePickerLocale {
-                    val datePickerState = androidx.compose.material3.rememberDatePickerState(
-                        initialDisplayedMonthMillis = september2026,
-                    )
+                    val datePickerState = remember {
+                        DatePickerState(
+                            locale = java.util.Locale.SIMPLIFIED_CHINESE,
+                            initialDisplayedMonthMillis = september2026,
+                        )
+                    }
                     ImportStartDatePickerBody(
                         datePickerState = datePickerState,
                         onOpenAcademicCalendar = {},
@@ -87,7 +92,8 @@ class ImportScreenTest {
         val semanticsTree = composeRule.onRoot(useUnmergedTree = true)
             .fetchSemanticsNode()
             .let(::describeSemanticsTree)
-        assertTrue(semanticsTree, semanticsTree.contains("选择日期"))
+        assertTrue(semanticsTree, semanticsTree.contains("选定的日期"))
+        assertTrue(semanticsTree, semanticsTree.contains("选第一教学周周一"))
         assertTrue(semanticsTree, semanticsTree.contains("2026年9月"))
         assertTrue(semanticsTree, !semanticsTree.contains("Select date"))
         assertTrue(semanticsTree, !semanticsTree.contains("September 2026"))
@@ -115,12 +121,13 @@ class ImportScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("查看厦大校历（2026–2027 学年）")
+        composeRule.onNodeWithText("厦大校历（2026–2027）")
             .assertIsDisplayed()
             .assertHasClickAction()
             .performClick()
         assertEquals(XMU_ACADEMIC_CALENDAR_URL, openedUrl)
 
+        composeRule.onNodeWithText("2026年9月7日").assertIsDisplayed()
         composeRule.onNodeWithText("确认导入").performClick()
         assertEquals(Instant.parse("2026-09-07T00:00:00Z").toEpochMilli(), confirmedDate)
     }

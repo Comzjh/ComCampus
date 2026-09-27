@@ -25,6 +25,7 @@ import com.xmu.course.data.tronclass.assignment.AssignmentSyncSettings
 import com.xmu.course.contracts.presentation.StartupDestination
 import com.xmu.course.contracts.presentation.StartupDestinationPreference
 import com.xmu.course.domain.Semester
+import com.xmu.course.data.update.UpdateCheckResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -71,6 +72,7 @@ class SettingsHelpSectionTest {
 
     private fun showSettings(
         semesters: List<Semester> = listOf(Semester(id = 7L, code = "20261", name = "2026-2027 秋季学期")),
+        updateCheckResult: UpdateCheckResult = UpdateCheckResult.NotChecked,
     ) {
         val viewModel = SettingsViewModel(
             ApplicationProvider.getApplicationContext(),
@@ -83,6 +85,7 @@ class SettingsHelpSectionTest {
             MaterialTheme {
                 SettingsScreen(
                     viewModel = viewModel,
+                    updateCheckResult = updateCheckResult,
                     onReplayGuide = { replayCalls++ },
                     onOpenGuide = { openGuideCalls++ },
                 )
@@ -163,6 +166,21 @@ class SettingsHelpSectionTest {
     fun `about section identifies the current open source license`() {
         showSettings()
         composeRule.onNodeWithText("开源协议：GNU GPL-3.0-only")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `available update remains discoverable in settings`() {
+        showSettings(
+            updateCheckResult = UpdateCheckResult.Available(
+                currentVersion = "v0.9.2",
+                latestVersion = "v0.9.3",
+                releaseUrl = "https://github.com/Comzjh/ComCampus/releases/tag/v0.9.3",
+            ),
+        )
+
+        composeRule.onNodeWithTag("settings_update_available")
             .performScrollTo()
             .assertIsDisplayed()
     }

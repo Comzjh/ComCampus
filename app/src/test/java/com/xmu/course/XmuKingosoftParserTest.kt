@@ -15,24 +15,24 @@ class XmuKingosoftParserTest {
 
     @Test fun `解析学期信息`() {
         val result = parser.parse(sampleHtml())
-        assertEquals("20261", result.semesterCode)
-        assertEquals("2026-2027学年 秋季学期", result.semesterName)
+        assertEquals("SYNTHETIC-2026-A", result.semesterCode)
+        assertEquals("合成示例学期", result.semesterName)
     }
 
     @Test fun `解析全部课程记录`() {
         val result = parser.parse(sampleHtml())
-        // 样张共有 38 个 arrage 记录，全部应解析成功。
+        // 合成夹具包含 38 条 arrage 记录，全部应解析成功。
         assertEquals(38, result.courses.size)
     }
 
     @Test fun `普通课程字段`() {
         val result = parser.parse(sampleHtml())
-        val course = result.courses.first { it.name.startsWith("大学物理实验") && it.weeks == (1..2).toSet() }
+        val course = result.courses.first { it.name == "合成课程01" && it.weeks == (1..2).toSet() }
         assertEquals(2, course.dayOfWeek)
         assertEquals(1, course.startSection)
         assertEquals(4, course.duration)
-        assertEquals("陈婷", course.teacher)
-        assertEquals("海韵教学楼104", course.location)
+        assertEquals("合成教师", course.teacher)
+        assertEquals("合成教室 A101", course.location)
         assertEquals(setOf(1, 2), course.weeks)
     }
 
