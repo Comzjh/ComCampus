@@ -61,3 +61,15 @@ class OpenTodoAction : ActionCallback {
         context.startActivity(buildTodoWidgetIntent(context))
     }
 }
+
+/** Queue a session-aware manual refresh from the todo widget. */
+class RefreshTodoWidgetAction : ActionCallback {
+
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        TodoWidgetSyncWork.enqueueManualRefresh(context)
+    }
+}

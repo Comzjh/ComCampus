@@ -29,7 +29,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.unit.ColorProvider
 
-/** Todo Widget：只读 Room 中的未完成待办，不发起网络请求。 */
+/** Room-backed Todo widget; WorkManager handles hourly and manual sync. */
 class TodoWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -60,14 +60,31 @@ fun TodoWidgetContent(
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            Text(
-                text = "待办 · ${data.totalUnfinished}",
-                style = widgetTextStyle(
-                    color = WidgetTheme.textPrimary,
-                    size = 13.sp,
-                    weight = FontWeight.Bold,
-                ),
-            )
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "待办 · " + data.totalUnfinished,
+                    modifier = GlanceModifier.defaultWeight(),
+                    style = widgetTextStyle(
+                        color = WidgetTheme.textPrimary,
+                        size = 13.sp,
+                        weight = FontWeight.Bold,
+                    ),
+                )
+                Text(
+                    text = "↻ 刷新",
+                    modifier = GlanceModifier
+                        .clickable(actionRunCallback(RefreshTodoWidgetAction::class.java))
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    style = widgetTextStyle(
+                        color = WidgetTheme.textSecondary,
+                        size = 10.sp,
+                        weight = FontWeight.Medium,
+                    ),
+                )
+            }
             Spacer(modifier = GlanceModifier.height(5.dp))
             if (data.items.isEmpty()) {
                 Text(
@@ -101,6 +118,7 @@ private fun TodoWidgetRow(item: WidgetTodoItem) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
+            .clickable(actionRunCallback(OpenTodoAction::class.java))
             .padding(top = 3.dp)
             .background(ColorProvider(Color(0x26FFFFFF)))
             .padding(horizontal = 7.dp, vertical = 5.dp),

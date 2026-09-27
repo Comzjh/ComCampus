@@ -127,6 +127,11 @@ class AssignmentRepository(
                 val baseline = metadataDao.get()?.importBaselineAt
                     ?: error("TronClass import baseline was not persisted")
 
+                // Keep IDs from the complete successful API snapshot, including tasks that
+                // are filtered out by the first-import baseline below.
+                val assignmentIdsInSnapshot = assignments
+                    .mapTo(mutableSetOf()) { it.assignment.externalId }
+
                 val eligibleAssignments = assignments
                     .filter { item ->
                         item.assignment.deadline == null || item.assignment.deadline >= baseline
@@ -154,8 +159,30 @@ class AssignmentRepository(
                         knownInactiveCourseIds.toList(),
                     )
                 }
-                // 所有网络/解析工作已在事务外完成；这里原子建立 baseline、清理历史项并幂等写入。
+                // All network and parsing work completed before this transaction. Reconcile
+                // only after the complete assignment snapshot has been written atomically.
                 todoDao.upsertExternalTodos(todos)
+                if (activeCourseIds.isNotEmpty()) {
+                    todoDao.getIncompleteExternalTodosForCourses(
+                        TodoSource.TRONCLASS.name,
+                        activeCourseIds.toList(),
+                    ).forEach { existing ->
+                        val externalId = existing.externalId
+                        val deadline = existing.deadline
+                        if (externalId != null &&
+                            !externalId.startsWith("exam:") &&
+                            externalId !in assignmentIdsInSnapshot &&
+                            deadline != null &&
+                            deadline > candidateBaselineAt
+                        ) {
+                            todoDao.updateCompletedById(
+                                existing.id,
+                                completed = true,
+                                updatedTime = candidateBaselineAt,
+                            )
+                        }
+                    }
+                }
                 TronResult.Success(todos.size)
             }
         }.getOrElse { TronResult.Error(TronClassError.StorageError) }

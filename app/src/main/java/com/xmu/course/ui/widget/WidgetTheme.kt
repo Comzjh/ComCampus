@@ -85,7 +85,7 @@ object WidgetTheme {
         return bitmap
     }
 
-    private fun gradientColors(style: WidgetBackgroundStyle, isDark: Boolean): Pair<Int, Int> = when (style) {
+    internal fun gradientColors(style: WidgetBackgroundStyle, isDark: Boolean): Pair<Int, Int> = when (style) {
         WidgetBackgroundStyle.XMU_BLUE ->
             if (isDark) 0xFF0E2A4D.toInt() to 0xFF124070.toInt()
             else BluePrimary.toArgb() to 0xFF3C8BC7.toInt()

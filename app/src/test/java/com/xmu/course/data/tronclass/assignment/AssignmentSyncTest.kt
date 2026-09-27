@@ -113,7 +113,110 @@ class AssignmentSyncTest {
     }
 
     @Test
-    fun `分页结果全部写入且解析失败时旧Todo保持`() = runTest {
+    fun missingFutureHomeworkIsCompletedButOtherTodosStayUnchanged() = runTest {
+        val syncTime = 10_000L
+        db.todoDao().insertAll(
+            listOf(
+                TodoEntity(
+                    title = "消失的作业", description = "", courseId = 9001L,
+                    source = TodoSource.TRONCLASS.name, deadline = syncTime + 1,
+                    createdTime = 1L, updatedTime = 1L, externalId = "601",
+                ),
+                TodoEntity(
+                    title = "官方考试", description = "", courseId = 9001L,
+                    source = TodoSource.TRONCLASS.name, deadline = syncTime + 1,
+                    createdTime = 1L, updatedTime = 1L, externalId = "exam:602",
+                ),
+                TodoEntity(
+                    title = "无截止作业", description = "", courseId = 9001L,
+                    source = TodoSource.TRONCLASS.name, deadline = null,
+                    createdTime = 1L, updatedTime = 1L, externalId = "603",
+                ),
+                TodoEntity(
+                    title = "手动待办", description = "", courseId = 9001L,
+                    source = TodoSource.LOCAL.name, deadline = syncTime + 1,
+                    createdTime = 1L, updatedTime = 1L,
+                ),
+            ),
+        )
+
+        val result = repository(
+            FakeApi(Response.success(page())),
+            clock = { syncTime },
+        ).syncAssignments()
+
+        assertEquals(TronResult.Success(0), result)
+        val todos = db.todoDao().getAll()
+        val completedHomework = todos.single { it.externalId == "601" }
+        assertTrue(completedHomework.completed)
+        assertEquals(syncTime, completedHomework.updatedTime)
+        assertFalse(todos.single { it.externalId == "exam:602" }.completed)
+        assertFalse(todos.single { it.externalId == "603" }.completed)
+        assertFalse(todos.single { it.title == "手动待办" }.completed)
+    }
+
+    @Test
+    fun missingHomeworkAtOrAfterDeadlineRemainsIncomplete() = runTest {
+        val syncTime = 10_000L
+        db.tronTodoSyncMetadataDao().insertIfAbsent(
+            TronTodoSyncMetadataEntity(importBaselineAt = 1_000L),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "已逾期的作业", description = "", courseId = 9001L,
+                source = TodoSource.TRONCLASS.name, deadline = syncTime - 1,
+                createdTime = 1L, updatedTime = 1L, externalId = "611",
+            ),
+        )
+
+        val result = repository(
+            FakeApi(Response.success(page())),
+            clock = { syncTime },
+        ).syncAssignments()
+
+        assertEquals(TronResult.Success(0), result)
+        val todo = db.todoDao().getAll().single()
+        assertFalse(todo.completed)
+        assertEquals(syncTime - 1, todo.deadline)
+        assertEquals(1L, todo.updatedTime)
+    }
+
+    @Test
+    fun assignmentPresentInFullSnapshotIsNotCompletedWhenBaselineFiltersImport() = runTest {
+        val syncTime = 10_000L
+        db.tronTodoSyncMetadataDao().insertIfAbsent(
+            TronTodoSyncMetadataEntity(importBaselineAt = 5_000L),
+        )
+        db.todoDao().insert(
+            TodoEntity(
+                title = "仍存在的作业", description = "", courseId = 9001L,
+                source = TodoSource.TRONCLASS.name, deadline = 20_000L,
+                createdTime = 1L, updatedTime = 1L, externalId = "621",
+            ),
+        )
+        val api = FakeApi(
+            Response.success(
+                page(
+                    AssignmentDto(
+                        621L,
+                        "基线前的作业",
+                        "",
+                        9001L,
+                        Instant.ofEpochMilli(4_999L).toString(),
+                        null,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(TronResult.Success(0), repository(api, clock = { syncTime }).syncAssignments())
+        val todo = db.todoDao().getAll().single()
+        assertFalse(todo.completed)
+        assertEquals("仍存在的作业", todo.title)
+    }
+
+    @Test
+    fun allPagesAreWrittenAndOldTodoIsKeptWhenParsingFails() = runTest {
         val old = TodoEntity(
             title = "旧作业", description = "", courseId = null,
             source = TodoSource.TRONCLASS.name, deadline = null,
@@ -138,7 +241,7 @@ class AssignmentSyncTest {
     fun `网络失败和401不改变已有Todo`() = runTest {
         val old = TodoEntity(
             title = "本地缓存作业", description = "", courseId = null,
-            source = TodoSource.TRONCLASS.name, deadline = null,
+            source = TodoSource.TRONCLASS.name, deadline = 10_000L,
             createdTime = 1L, updatedTime = 1L, externalId = "old",
         )
         db.todoDao().insert(old)

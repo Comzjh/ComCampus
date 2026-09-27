@@ -44,7 +44,13 @@ object WidgetUpdater {
         }
     }
 
-    /** 两个 Widget 都刷新。 */
+    /** Re-render widgets after system configuration changes such as light/dark mode. */
+    fun refreshForConfigurationChange(context: Context) {
+        val appContext = context.applicationContext
+        appScope.launch { updateAll(appContext) }
+    }
+
+    /** Refresh every widget backed by the shared local database. */
     suspend fun updateAll(context: Context) {
         val appContext = context.applicationContext
         val manager = GlanceAppWidgetManager(appContext)

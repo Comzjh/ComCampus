@@ -50,7 +50,7 @@ sealed interface TodoAutoSyncResult {
     data class Completed(val result: TodoRefreshResult) : TodoAutoSyncResult
 }
 
-/** 前台触发的节流同步；不创建后台调度器，不负责倒计时显示。 */
+/** Applies the auto-sync setting, session check, throttle, and successful-sync timestamp. */
 class TodoAutoSyncCoordinator(
     private val refreshCoordinator: TodoRefreshCoordinator,
     private val settings: TodoAutoSyncSettings,
@@ -61,11 +61,21 @@ class TodoAutoSyncCoordinator(
     suspend fun refreshIfDue(): TodoAutoSyncResult {
         if (!settings.isEnabled()) return TodoAutoSyncResult.SkippedDisabled
         if (!isSessionAvailable()) return TodoAutoSyncResult.SkippedUnauthenticated
-        val current = now()
         val last = settings.lastSuccessfulSyncAt()
-        if (last != null && current - last < intervalMillis) {
+        if (last != null && now() - last < intervalMillis) {
             return TodoAutoSyncResult.SkippedThrottled
         }
+        return refreshAndRecord()
+    }
+
+    /** Widget 的手动刷新绕过自动同步开关和节流，但仍要求已有登录态。 */
+    suspend fun refreshNow(): TodoAutoSyncResult {
+        if (!isSessionAvailable()) return TodoAutoSyncResult.SkippedUnauthenticated
+        return refreshAndRecord()
+    }
+
+    private suspend fun refreshAndRecord(): TodoAutoSyncResult {
+        val current = now()
         val result = refreshCoordinator.refresh()
         if (result is TodoRefreshResult.Success) {
             settings.setLastSuccessfulSyncAt(current)

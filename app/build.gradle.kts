@@ -118,6 +118,7 @@ dependencies {
     // Widget: Jetpack Glance AppWidget。
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // 数据层：Phase 3/4 启用（依赖先行声明，避免反复改构建文件）
     implementation(libs.androidx.room.runtime)

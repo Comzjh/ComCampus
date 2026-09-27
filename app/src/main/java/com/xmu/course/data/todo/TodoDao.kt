@@ -59,6 +59,15 @@ interface TodoDao {
     )
     suspend fun deleteTronClassTodosForCourses(source: String, courseIds: List<Long>)
 
+    @Query(
+        "SELECT * FROM todo_items WHERE source = :source AND completed = 0 " +
+            "AND courseId IN (:courseIds) AND externalId IS NOT NULL",
+    )
+    suspend fun getIncompleteExternalTodosForCourses(
+        source: String,
+        courseIds: List<Long>,
+    ): List<TodoEntity>
+
     @Query("DELETE FROM todo_items WHERE source = :source")
     suspend fun deleteBySource(source: String)
 

@@ -71,6 +71,36 @@ class TodoAutoSyncTest {
         assertEquals(1_000L, settings.last)
     }
 
+    @Test
+    fun manualRefreshBypassesDisabledSettingAndThrottle() = runTest {
+        val settings = FakeSettings(enabled = false, last = 9_900L)
+        val refresh = FakeRefresh(TodoRefreshResult.Success(2))
+        val coordinator = TodoAutoSyncCoordinator(refresh, settings, now = { 10_000L })
+
+        assertEquals(
+            TodoAutoSyncResult.Completed(TodoRefreshResult.Success(2)),
+            coordinator.refreshNow(),
+        )
+        assertEquals(1, refresh.calls)
+        assertEquals(10_000L, settings.last)
+    }
+
+    @Test
+    fun manualRefreshStillRequiresAnExistingSession() = runTest {
+        val settings = FakeSettings(enabled = true, last = null)
+        val refresh = FakeRefresh(TodoRefreshResult.Success(2))
+        val coordinator = TodoAutoSyncCoordinator(
+            refresh,
+            settings,
+            now = { 10_000L },
+            isSessionAvailable = { false },
+        )
+
+        assertEquals(TodoAutoSyncResult.SkippedUnauthenticated, coordinator.refreshNow())
+        assertEquals(0, refresh.calls)
+        assertNull(settings.last)
+    }
+
     private class FakeRefresh(private val result: TodoRefreshResult) : TodoRefreshCoordinator {
         var calls = 0
         override suspend fun refresh(): TodoRefreshResult {
