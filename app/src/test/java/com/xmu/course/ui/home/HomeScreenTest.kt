@@ -246,6 +246,8 @@ class HomeScreenTest {
         composeRule.onNodeWithText("大学英语").assertExists()
         composeRule.onNodeWithText("2 项需要注意").performScrollTo().assertExists()
         composeRule.onNodeWithText("复习").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("home_todo_deadline_1").performScrollTo().assertExists()
+        composeRule.onNodeWithText("还有1m").performScrollTo().assertExists()
         composeRule.onNodeWithTag("home_gpa_summary").assertDoesNotExist()
         composeRule.onNodeWithTag("home_quick_actions").assertDoesNotExist()
 

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,7 +28,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import com.xmu.course.data.academiccompletion.AcademicCompletionStore
 import com.xmu.course.ui.academiccompletion.AcademicCompletionViewModel
 import com.xmu.course.ui.academiccompletion.CreditInputDialog
@@ -107,11 +111,48 @@ fun AcademicSemesterScreen(
                             title = snapshot.semesterLabel,
                             modifier = Modifier.testTag("academic_semester_header"),
                         ) {
-                            Text(
-                                "在修 ${snapshot.enrolledCourses.size} 门 · 学校页面统计时间 ${snapshot.plan.sourceSnapshotAt}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("academic_semester_summary_metrics"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(0.8f),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+                                ) {
+                                    Text(
+                                        "${snapshot.enrolledCourses.size} 门",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.testTag("academic_semester_metric_courses"),
+                                    )
+                                    Text(
+                                        "在修课程",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1.2f),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+                                ) {
+                                    Text(
+                                        "学校页面统计",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        snapshot.plan.sourceSnapshotAt,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.testTag("academic_semester_source_snapshot_time"),
+                                    )
+                                }
+                            }
                             Text(
                                 "本机获取时间 ${snapshot.fetchedAtEpochMillis?.let(::formatAcademicRefreshTime) ?: "未记录"}",
                                 style = MaterialTheme.typography.bodySmall,

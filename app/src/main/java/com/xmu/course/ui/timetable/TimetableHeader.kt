@@ -163,23 +163,38 @@ internal fun TimetableCompactHeader(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(
-            onClick = onAddClick,
-            enabled = addEnabled,
-            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                .testTag("timetable_header_add"),
-        ) {
-            Icon(
-                Icons.Filled.Add,
-                contentDescription = "添加课程",
-                modifier = Modifier.size(20.dp),
-                tint = if (addEnabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                },
-            )
-        }
+        TimetableAddCourseAction(onClick = onAddClick, enabled = addEnabled)
         TutorialToolbarAction()
+    }
+}
+
+@Composable
+internal fun TimetableAddCourseAction(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clip(shape)
+            .background(
+                if (enabled) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
+            )
+            .testTag("timetable_header_add"),
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = "添加课程",
+            modifier = Modifier.size(20.dp),
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+            },
+        )
     }
 }

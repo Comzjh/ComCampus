@@ -27,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -223,19 +222,13 @@ private fun TimetableScreenContent(
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        IconButton(
+                        TimetableAddCourseAction(
                             onClick = {
                                 addPrefill = null
                                 showAddDialog = true
                             },
                             enabled = state.hasData,
-                        ) {
-                            Icon(
-                                Icons.Filled.Add,
-                                contentDescription = "添加课程",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
+                        )
                         TutorialToolbarAction()
                     },
                     )

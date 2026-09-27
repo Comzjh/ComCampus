@@ -416,6 +416,7 @@ private fun AcademicProgressRing(fraction: Float?) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) {
     AppSectionCard(
         title = "GPA",
@@ -459,15 +460,52 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                     modifier = Modifier.testTag("academic_gpa_value"),
                 )
                 Text(
-                    buildString {
-                        append("按逐课绩点加权 · 计入 ${summary.countedCourses} 门 · ${summary.countedCreditsText.orEmpty()} 学分")
-                        if (summary.pointFreeCourses > 0) append(" · 合格制不计绩点 ${summary.pointFreeCourses} 门")
-                        if (summary.excludedByPolicy > 0) append(" · 按你的选择不计入 ${summary.excludedByPolicy} 门")
-                        if (summary.malformedCourses > 0) append(" · 数据异常未参与 ${summary.malformedCourses} 门")
-                    },
+                    "按逐课绩点加权",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("academic_gpa_method"),
                 )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("academic_gpa_primary_metrics"),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
+                ) {
+                    AcademicGpaMetric(
+                        value = "${summary.countedCourses} 门",
+                        label = "计入课程",
+                        testTag = "academic_gpa_metric_courses",
+                        modifier = Modifier.weight(1f),
+                    )
+                    AcademicGpaMetric(
+                        value = summary.countedCreditsText?.let { "$it 学分" } ?: "—",
+                        label = "计入学分",
+                        testTag = "academic_gpa_metric_credits",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                val adjustmentNotes = buildList {
+                    if (summary.pointFreeCourses > 0) add("合格制不计绩点 ${summary.pointFreeCourses} 门")
+                    if (summary.excludedByPolicy > 0) add("按你的选择不计入 ${summary.excludedByPolicy} 门")
+                    if (summary.malformedCourses > 0) add("数据异常未参与 ${summary.malformedCourses} 门")
+                }
+                if (adjustmentNotes.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("academic_gpa_adjustments"),
+                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                    ) {
+                        adjustmentNotes.forEach { note ->
+                            Text(
+                                note,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
                 Text(
                     "本数值为设备上的估算，不是教务系统给出的 GPA。",
                     style = MaterialTheme.typography.bodySmall,
@@ -478,6 +516,31 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AcademicGpaMetric(
+    value: String,
+    label: String,
+    testTag: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+    ) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.testTag(testTag),
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

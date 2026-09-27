@@ -91,6 +91,10 @@ class CourseManagerScreenTest {
     @Test
     fun longPressCardOpensConfirmationAndCancelDeletesNothing() {
         showCourseManager(COURSE_A, COURSE_B)
+        composeRule.onNodeWithTag(
+            "course_card_weeks_${COURSE_A.id}",
+            useUnmergedTree = true,
+        ).assertIsDisplayed()
 
         openDeleteDialog(COURSE_A)
         composeRule.onNodeWithText(DELETE_TITLE, useUnmergedTree = true).assertExists()

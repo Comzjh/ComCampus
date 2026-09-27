@@ -18,20 +18,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import com.xmu.course.contracts.todo.model.TodoFeatureModel
 import com.xmu.course.contracts.todo.model.TodoFeatureSource
-import com.xmu.course.domain.todo.TodoDeadlinePolicy
 import com.xmu.course.domain.todo.TodoDatePolicy
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppLargeTitleHeader
 import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
+import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
 import com.xmu.course.ui.timetable.TimetableUiState
 import com.xmu.course.ui.timetable.TimetableViewModel
 import com.xmu.course.ui.todo.TodoViewModel
 import com.xmu.course.ui.widget.WidgetCourse
 import com.xmu.course.ui.widget.WidgetRepository
+import com.xmu.course.ui.widget.TodoDeadlineDisplay
+import com.xmu.course.ui.widget.TodoUrgency
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Locale
@@ -126,6 +129,7 @@ private fun TodayFocusCard(
                 FocusCourseRow(
                     course = focus,
                     status = today.countdown,
+                    tone = if (today.current != null) StatusTone.Success else StatusTone.Info,
                     tag = if (today.current != null) "home_current_class" else "home_next_class",
                 )
                 if (today.current != null && today.next != null) {
@@ -156,7 +160,7 @@ private fun TodayFocusCard(
 }
 
 @Composable
-private fun FocusCourseRow(course: WidgetCourse, status: String, tag: String) {
+private fun FocusCourseRow(course: WidgetCourse, status: String, tone: StatusTone, tag: String) {
     Row(
         modifier = Modifier.fillMaxWidth().testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
@@ -170,7 +174,7 @@ private fun FocusCourseRow(course: WidgetCourse, status: String, tag: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        AppStatusChip(label = status)
+        AppStatusChip(label = status, tone = tone)
     }
 }
 
@@ -261,21 +265,45 @@ private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
     }
     val isDateOnly = todo.source == TodoFeatureSource.LOCAL &&
         todo.deadline?.let(TodoDatePolicy::isDateOnlyValue) == true
+    val deadlineDisplay = TodoDeadlineDisplay.resolve(deadline, nowMillis)
+    val tone = when (deadlineDisplay.urgency) {
+        TodoUrgency.OVERDUE, TodoUrgency.CRITICAL -> StatusTone.Error
+        TodoUrgency.URGENT -> StatusTone.Warning
+        TodoUrgency.UPCOMING -> StatusTone.Info
+        TodoUrgency.NORMAL -> StatusTone.Neutral
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
     ) {
-        Text(todo.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, modifier = Modifier.weight(1f))
-        Text(
-            WidgetRepository.formatTodoDeadline(deadline, nowMillis, isDateOnly = isDateOnly),
-            style = MaterialTheme.typography.bodySmall,
-            color = if (TodoDeadlinePolicy.isOverdue(deadline, nowMillis)) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+        ) {
+            Text(todo.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+            ) {
+                Text(
+                    WidgetRepository.formatTodoDeadline(deadline, nowMillis, isDateOnly = isDateOnly),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                deadlineDisplay.text?.let { label ->
+                    AppStatusChip(
+                        label = label,
+                        modifier = Modifier.testTag("home_todo_deadline_${todo.id.value}"),
+                        tone = tone,
+                    )
+                }
+            }
+        }
     }
 }
 

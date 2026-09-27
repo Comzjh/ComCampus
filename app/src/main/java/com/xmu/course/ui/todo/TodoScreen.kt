@@ -35,6 +35,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.text.style.TextOverflow
 import com.xmu.course.ui.components.AppListDivider
+import com.xmu.course.ui.components.AppStatusChip
+import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppShapes
 import com.xmu.course.ui.theme.AppSpacing
 import androidx.compose.material3.Checkbox
@@ -531,21 +533,35 @@ private fun TodoItem(
             val countdown =
                 if (todo.completed || deadlineDisplay.urgency == TodoUrgency.NORMAL) null else deadlineDisplay.text
             if (deadlineLine != null || countdown != null) {
-                Text(
-                    buildString {
-                        deadlineLine?.let { append("截止 ").append(it) }
-                        countdown?.let {
-                            if (isNotEmpty()) append(" · ")
-                            append(it)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                ) {
+                    deadlineLine?.let {
+                        Text(
+                            text = "截止 $it",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    countdown?.let { label ->
+                        val tone = when (deadlineDisplay.urgency) {
+                            TodoUrgency.OVERDUE, TodoUrgency.CRITICAL -> StatusTone.Error
+                            TodoUrgency.URGENT -> StatusTone.Warning
+                            TodoUrgency.UPCOMING -> StatusTone.Info
+                            TodoUrgency.NORMAL -> StatusTone.Neutral
                         }
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (!todo.completed && deadlineDisplay.urgency == TodoUrgency.OVERDUE) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
+                        AppStatusChip(
+                            label = label,
+                            modifier = Modifier.testTag("todo_deadline_status"),
+                            tone = tone,
+                        )
+                    }
+                }
             }
             Text(
                 (option?.name ?: "未关联课程") + " · " +

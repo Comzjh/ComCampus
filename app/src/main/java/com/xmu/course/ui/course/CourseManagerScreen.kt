@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -62,7 +63,11 @@ import com.xmu.course.XmuCourseApplication
 import com.xmu.course.domain.Course
 import com.xmu.course.ui.timetable.AddCourseDialog
 import com.xmu.course.ui.components.CourseColorSelector
+import com.xmu.course.ui.components.AppStatusChip
+import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.components.DEFAULT_COURSE_COLOR
+import com.xmu.course.ui.theme.AppShapes
+import com.xmu.course.ui.theme.AppSpacing
 
 /**
  * 课程管理页：当前课表全部课程的两列卡片列表。
@@ -253,8 +258,14 @@ private fun ManagedCourseCard(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = AppShapes.Card,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(
+            Modifier.padding(AppSpacing.CardPadding),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
@@ -266,12 +277,13 @@ private fun ManagedCourseCard(
                                 ?: MaterialTheme.colorScheme.primary,
                         ),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(AppSpacing.Xs))
                 Text(
                     course.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
             }
             if (course.teacher.isNotBlank()) {
@@ -292,10 +304,10 @@ private fun ManagedCourseCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                weeksLabel(course.weeks),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AppStatusChip(
+                label = weeksLabel(course.weeks),
+                modifier = Modifier.testTag("course_card_weeks_${course.id}"),
+                tone = StatusTone.Neutral,
             )
             if (course.note.isNotBlank()) {
                 Text(

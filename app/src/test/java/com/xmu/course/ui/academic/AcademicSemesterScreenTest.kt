@@ -121,7 +121,12 @@ class AcademicSemesterScreenTest {
     fun enrolledRowsShowOfficialFactsAndPendingFillEntry() {
         showContent()
         composeRule.onNodeWithTag("academic_semester_header").assertIsDisplayed()
-"在修 2 门 · 学校页面统计时间 2026-09-16 22:09"
+        composeRule.onNodeWithTag("academic_semester_metric_courses").assertIsDisplayed()
+        composeRule.onNodeWithText("2 门").assertIsDisplayed()
+        composeRule.onNodeWithText("在修课程").assertIsDisplayed()
+        composeRule.onNodeWithText("学校页面统计").assertIsDisplayed()
+        composeRule.onNodeWithTag("academic_semester_source_snapshot_time").assertIsDisplayed()
+        composeRule.onNodeWithText("2026-09-16 22:09").assertIsDisplayed()
         composeRule.onNodeWithText("本机获取时间 未记录").assertIsDisplayed()
         // AppStatusChip 是容器，文本位于子节点：按片段匹配
         composeRule.onNodeWithText("学分待确认 1 门", substring = true).assertIsDisplayed()

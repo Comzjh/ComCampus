@@ -3,6 +3,8 @@ package com.xmu.course.ui.academic
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,7 +46,7 @@ import com.xmu.course.ui.theme.AppSpacing
  * 官方成绩、学分、方案归属绝不被此页修改，也不写回学校；
  * 未确认存在方案外候选课程时页面明确「不出数」，不给默认结论。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AcademicGpaScreen(
     viewModel: AcademicGpaViewModel,
@@ -105,7 +107,9 @@ fun AcademicGpaScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        AcademicGpaTone.COMPUTED -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs)) {
+                        AcademicGpaTone.COMPUTED -> Column(
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                        ) {
                             Text(
                                 uiState.summary.valueText.orEmpty(),
                                 style = MaterialTheme.typography.displayLarge,
@@ -113,15 +117,58 @@ fun AcademicGpaScreen(
                                 modifier = Modifier.testTag("academic_gpa_computed"),
                             )
                             Text(
-                                buildString {
-                                    append("计入 ${uiState.summary.countedCourses} 门 · ${uiState.summary.countedCreditsText.orEmpty()} 学分")
-                                    if (uiState.summary.pointFreeCourses > 0) append(" · 合格制不计绩点 ${uiState.summary.pointFreeCourses} 门")
-                                    if (uiState.summary.excludedByPolicy > 0) append(" · 按你的选择不计入 ${uiState.summary.excludedByPolicy} 门")
-                                    if (uiState.summary.malformedCourses > 0) append(" · 数据异常未参与 ${uiState.summary.malformedCourses} 门")
-                                },
+                                "按逐课绩点加权",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("academic_gpa_method"),
                             )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("academic_gpa_primary_metrics"),
+                                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
+                            ) {
+                                AcademicGpaMetric(
+                                    value = "${uiState.summary.countedCourses} 门",
+                                    label = "计入课程",
+                                    testTag = "academic_gpa_metric_courses",
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AcademicGpaMetric(
+                                    value = uiState.summary.countedCreditsText?.let { "$it 学分" } ?: "—",
+                                    label = "计入学分",
+                                    testTag = "academic_gpa_metric_credits",
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            val adjustmentNotes = buildList {
+                                if (uiState.summary.pointFreeCourses > 0) {
+                                    add("合格制不计绩点 ${uiState.summary.pointFreeCourses} 门")
+                                }
+                                if (uiState.summary.excludedByPolicy > 0) {
+                                    add("按你的选择不计入 ${uiState.summary.excludedByPolicy} 门")
+                                }
+                                if (uiState.summary.malformedCourses > 0) {
+                                    add("数据异常未参与 ${uiState.summary.malformedCourses} 门")
+                                }
+                            }
+                            if (adjustmentNotes.isNotEmpty()) {
+                                FlowRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("academic_gpa_adjustments"),
+                                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                                ) {
+                                    adjustmentNotes.forEach { note ->
+                                        Text(
+                                            note,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
                             if (!uiState.summary.planSynced) {
                                 AppStatusChip("培养方案未刷新 · 方案归属未核对", tone = StatusTone.Warning)
                             }
@@ -200,6 +247,31 @@ fun AcademicGpaScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AcademicGpaMetric(
+    value: String,
+    label: String,
+    testTag: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+    ) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.testTag(testTag),
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

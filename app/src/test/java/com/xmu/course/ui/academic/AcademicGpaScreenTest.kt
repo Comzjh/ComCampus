@@ -158,8 +158,10 @@ class AcademicGpaScreenTest {
         assertEquals(OutsidePlanGpaPolicy.INCLUDE_OUTSIDE_PLAN, policyStore.policy.value)
         composeRule.waitForIdle()
         composeRule.scrollUntilComposed(hasTestTag("academic_gpa_computed")).assertExists()
-        // 计入口径是一行拼接文本，按片段断言，不把整句文案写死
-        composeRule.scrollUntilComposed(hasText("计入 2 门", substring = true)).assertIsDisplayed()
+        composeRule.scrollUntilComposed(hasTestTag("academic_gpa_method")).assertIsDisplayed()
+        composeRule.scrollUntilComposed(hasTestTag("academic_gpa_metric_courses")).assertIsDisplayed()
+        composeRule.scrollUntilComposed(hasTestTag("academic_gpa_metric_credits")).assertIsDisplayed()
+        composeRule.scrollUntilComposed(hasText("2 门")).assertIsDisplayed()
     }
 
     @Test
@@ -180,6 +182,7 @@ class AcademicGpaScreenTest {
         composeRule.scrollUntilComposed(hasTestTag("academic_gpa_policy_exclude")).performClick()
         composeRule.waitForIdle()
         composeRule.scrollUntilComposed(hasTestTag("academic_gpa_computed")).assertExists()
+        composeRule.scrollUntilComposed(hasTestTag("academic_gpa_adjustments")).assertExists()
         composeRule.scrollUntilComposed(hasText("按你的选择不计入 1 门", substring = true)).assertIsDisplayed()
         // 官方记录仍在历史成绩中原样保留：本页不提供任何删除/改写官方数据的入口
         composeRule.onNodeWithText("清除官方成绩").assertDoesNotExist()

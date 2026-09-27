@@ -205,7 +205,7 @@ internal fun TimetableWeekGrid(
                             .width(timeAxisWidth)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = TIMETABLE_HEADER_OVERLAY_ALPHA)),
                     ) {
-                        val axisLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+                        val axisLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
                         repeat(sectionCount) { index ->
                             Box(
                                 Modifier
@@ -271,8 +271,8 @@ internal fun TimetableWeekGrid(
                             .height(cellHeight * sectionCount),
                     ) {
                         if (showGrid) {
-                            val horizontalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)
-                            val verticalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
+                            val horizontalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)
+                            val verticalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)
                             Canvas(Modifier.fillMaxSize()) {
                                 val strokeWidth = 1.dp.toPx()
                                 for (index in 1..sectionCount) {

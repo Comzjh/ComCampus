@@ -150,6 +150,17 @@ class TodoScreenTest {
     }
 
     @Test
+    fun `临近截止倒计时使用独立状态徽标`() {
+        val deadline = System.currentTimeMillis() + 30 * 60 * 1000L
+        repository.todos.value = listOf(sampleTodo().copy(title = "半小时后截止", deadline = deadline))
+        viewModel = TodoViewModel(repository)
+        setContent()
+
+        composeRule.onNodeWithTag("todo_deadline_status").assertIsDisplayed()
+        composeRule.onNodeWithText("还有30m").assertIsDisplayed()
+    }
+
+    @Test
     fun `待办完成控件提供勾选状态和48dp触控区域`() {
         repository.todos.value = listOf(sampleTodo())
         viewModel = TodoViewModel(repository)

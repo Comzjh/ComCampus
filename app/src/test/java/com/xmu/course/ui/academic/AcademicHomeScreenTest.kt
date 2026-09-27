@@ -275,6 +275,8 @@ class AcademicHomeScreenTest {
         showScreen(plan = planStore(), grades = gradeStore())
         composeRule.onNodeWithTag("academic_gpa_value").performScrollTo().assertExists()
         composeRule.onNodeWithText("本地计算 GPA").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("academic_gpa_metric_courses").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("academic_gpa_metric_credits").assertExists()
     }
 
     @Test
