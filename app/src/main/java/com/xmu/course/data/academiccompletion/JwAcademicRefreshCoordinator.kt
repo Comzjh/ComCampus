@@ -32,7 +32,10 @@ sealed interface AcademicRefreshOutcome {
     data object MalformedResponse : AcademicRefreshOutcome
 
     /** 组装/对账失败：数据过期或来源结构变化；旧缓存保持不变。 */
-    data class RejectedByValidation(val reasons: List<String>) : AcademicRefreshOutcome
+    data class RejectedByValidation(
+        val reasons: List<String>,
+        val diagnostics: AcademicRefreshDiagnostics? = null,
+    ) : AcademicRefreshOutcome
 
     /** 网络失败。 */
     data object NetworkError : AcademicRefreshOutcome
@@ -79,7 +82,13 @@ class JwAcademicRefreshCoordinator(
         val plans = fetchOk(JwReadEndpoint.XYWCCX_PLANS, JwXywccxDialect.plansBody()) ?: return lastFailure
         val planCode = XywccxSnapshotAssembler.selectMainPlan(plans)
             ?.optString("PYFADM")?.ifBlank { null }
-            ?: return AcademicRefreshOutcome.RejectedByValidation(listOf("未找到个人培养方案"))
+            ?: return AcademicRefreshOutcome.RejectedByValidation(
+                reasons = listOf("未找到个人培养方案"),
+                diagnostics = AcademicRefreshDiagnostics(
+                    stage = AcademicRefreshDiagnosticStage.PLAN_SELECTION,
+                    code = AcademicRefreshDiagnosticCode.PLAN_NOT_FOUND,
+                ),
+            )
 
         val snapshot = fetchOk(
             JwReadEndpoint.XYWCCX_COMPLETION_SNAPSHOT,
@@ -116,12 +125,34 @@ class JwAcademicRefreshCoordinator(
         )
         val sourceJson = when (assembled) {
             is AssembleResult.Invalid ->
-                return AcademicRefreshOutcome.RejectedByValidation(listOf(assembled.reason))
+                return AcademicRefreshOutcome.RejectedByValidation(
+                    reasons = listOf(assembled.reason),
+                    diagnostics = AcademicRefreshDiagnostics(
+                        stage = AcademicRefreshDiagnosticStage.SNAPSHOT_ASSEMBLY,
+                        code = AcademicRefreshDiagnosticCode.SOURCE_STRUCTURE_INVALID,
+                    ),
+                )
             is AssembleResult.Success -> assembled.sourceJson
         }
         return when (val parsed = LocalAcademicSnapshotParser.parse(sourceJson)) {
-            is SnapshotImportResult.Rejected ->
-                AcademicRefreshOutcome.RejectedByValidation(parsed.reasons.take(3))
+            is SnapshotImportResult.Rejected -> {
+                val assembledSuccess = assembled as AssembleResult.Success
+                val hasPlanCreditMismatch = parsed.reasons.any { reason ->
+                    reason.startsWith("方案内课程学分求和（") &&
+                        reason.contains("与方案级本学期已选合计（")
+                }
+                val code = if (hasPlanCreditMismatch) {
+                    AcademicRefreshDiagnosticCode.PLAN_CREDIT_TOTAL_MISMATCH
+                } else AcademicRefreshDiagnosticCode.SOURCE_VALIDATION_REJECTED
+                AcademicRefreshOutcome.RejectedByValidation(
+                    reasons = parsed.reasons.take(3),
+                    diagnostics = AcademicRefreshDiagnostics(
+                        stage = AcademicRefreshDiagnosticStage.SNAPSHOT_VALIDATION,
+                        code = code,
+                        reconciliation = assembledSuccess.diagnostics,
+                    ),
+                )
+            }
             is SnapshotImportResult.Success -> {
                 val fetchedSnapshot = parsed.snapshot.copy(fetchedAtEpochMillis = epochMillisProvider())
                 if (!store.import(fetchedSnapshot)) return AcademicRefreshOutcome.StorageFailure

@@ -6,7 +6,10 @@ import org.json.JSONObject
 
 /** 组装结果：成功携带来源格式 JSON（可直接进 LocalAcademicSnapshotParser）；失败只含安全原因。 */
 sealed interface AssembleResult {
-    data class Success(val sourceJson: String) : AssembleResult
+    data class Success(
+        val sourceJson: String,
+        val diagnostics: AcademicCreditReconciliationSummary,
+    ) : AssembleResult
 
     /** 原因只描述缺失/非法的字段路径，绝不携带任何字段值或学生数据。 */
     data class Invalid(val reason: String) : AssembleResult
@@ -85,6 +88,9 @@ object XywccxSnapshotAssembler {
         val seenCourseCodes = mutableSetOf<String>()
         var inPlanSum = BigDecimal.ZERO
         var inPlanCount = 0
+        var inPlanCourseCount = 0
+        var outOfPlanCourseCount = 0
+        var inPlanMissingCreditCount = 0
         for (index in 0 until courseRows.length()) {
             val row = courseRows.optJSONObject(index) ?: continue
             val code = row.optString("KCDM")
@@ -93,6 +99,7 @@ object XywccxSnapshotAssembler {
             val name = row.optString("KCMC")
             if (name.isBlank()) continue
             val inPlan = code in poolCodes
+            if (inPlan) inPlanCourseCount++ else outOfPlanCourseCount++
             val poolCredit = creditDict[code]
             val course = JSONObject()
                 .put("KCDM", code)
@@ -106,6 +113,7 @@ object XywccxSnapshotAssembler {
                 inPlanSum += BigDecimal(poolCredit)
                 inPlanCount += 1
             } else {
+                if (inPlan) inPlanMissingCreditCount++
                 // 方案外+在修：系统限制导致结课前无学分可查；置 null 并要求人工确认。
                 // （池内命中但学分非法的情况同样置 null，由解析器整单拒绝。）
                 course.put("XF", JSONObject.NULL)
@@ -144,6 +152,20 @@ object XywccxSnapshotAssembler {
         }
 
         val inPlanSumText = creditsOf(inPlanSum)
+        val reconciledWithPlanLevel = BigDecimal(inPlanSumText).compareTo(BigDecimal(planLevelXkxf)) == 0
+        val diagnostics = AcademicCreditReconciliationSummary(
+            coursePoolRowCount = poolRows.length(),
+            coursePoolDistinctCodeCount = poolCodes.size,
+            semesterCourseRowCount = courseRows.length(),
+            semesterCourseDistinctCodeCount = seenCourseCodes.size,
+            inPlanCourseCount = inPlanCourseCount,
+            outOfPlanCourseCount = outOfPlanCourseCount,
+            inPlanMissingCreditCount = inPlanMissingCreditCount,
+            confirmedInPlanCreditCount = inPlanCount,
+            inPlanCreditsSum = inPlanSumText,
+            planLevelCredits = planLevelXkxf,
+            reconciledWithPlanLevel = reconciledWithPlanLevel,
+        )
         val root = JSONObject()
             .put("generated_at", inputs.generatedAtDate)
             .put("source", "xywccx_live_refresh")
@@ -170,10 +192,10 @@ object XywccxSnapshotAssembler {
                     .put("in_plan_xf_sum", inPlanSumText)
                     .put(
                         "reconciled_with_plan_level_xkxf",
-                        BigDecimal(inPlanSumText).compareTo(BigDecimal(planLevelXkxf)) == 0,
+                        reconciledWithPlanLevel,
                     ),
             )
-        return AssembleResult.Success(root.toString())
+        return AssembleResult.Success(root.toString(), diagnostics)
     }
 
     /**

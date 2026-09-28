@@ -168,6 +168,12 @@ class JwAcademicRefreshCoordinatorTest {
         }
         val outcome = coordinator(store, FakeJwPage(responses = skewed)).refresh()
         assertTrue(outcome is AcademicRefreshOutcome.RejectedByValidation)
+        val diagnostic = (outcome as AcademicRefreshOutcome.RejectedByValidation).diagnostics
+        assertEquals(AcademicRefreshDiagnosticCode.PLAN_CREDIT_TOTAL_MISMATCH, diagnostic?.code)
+        assertEquals(AcademicRefreshDiagnosticStage.SNAPSHOT_VALIDATION, diagnostic?.stage)
+        assertEquals("3", diagnostic?.reconciliation?.inPlanCreditsSum)
+        assertEquals("99", diagnostic?.reconciliation?.planLevelCredits)
+        assertEquals(false, diagnostic?.reconciliation?.reconciledWithPlanLevel)
         val after = (store.current() as AcademicCompletionStore.State.Loaded).snapshot
         assertEquals(before, after)
     }

@@ -1,7 +1,11 @@
 package com.xmu.course.ui.auth
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -31,9 +37,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import com.xmu.course.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -44,7 +53,10 @@ import com.xmu.course.AppLinks
 import com.xmu.course.adapter.jw.JwAcademicPdfDownload
 import com.xmu.course.adapter.jw.JwAcademicReportDownloadHandler
 import com.xmu.course.adapter.jw.JwGsappSessionPriming
+import com.xmu.course.data.academiccompletion.AcademicDiagnosticEnvironment
+import com.xmu.course.data.academiccompletion.AcademicRefreshDiagnosticArchive
 import com.xmu.course.ui.import.WebSessionManager
+import java.io.File
 
 private const val JW_ACADEMIC_REPORT_TAG = "JwAcademicReport"
 private val PRINT_DIAGNOSTIC_PATTERN = Regex("print|pdf|report|xywccx", RegexOption.IGNORE_CASE)
@@ -75,10 +87,52 @@ fun JwAcademicReportScreen(
     var primingActive by remember { mutableStateOf(refreshController != null) }
     // 自动刷新请求至多消费一次；证书页（无控制器）天然不触发。
     var autoRefreshPending by remember { mutableStateOf(autoRefresh && refreshController != null) }
+    val context = LocalContext.current
+    val diagnosticArchive = remember(context) {
+        AcademicRefreshDiagnosticArchive(
+            outputDirectory = File(context.filesDir, "diagnostics/academic_refresh"),
+            environment = AcademicDiagnosticEnvironment(
+                appVersionName = BuildConfig.VERSION_NAME,
+                appVersionCode = BuildConfig.VERSION_CODE,
+                androidApiLevel = Build.VERSION.SDK_INT,
+            ),
+        )
+    }
+    var diagnosticArchiveFile by remember(diagnosticArchive) {
+        mutableStateOf(diagnosticArchive.latestArchive.takeIf { it.isFile })
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val refreshScope = rememberCoroutineScope()
     val downloadHandler = remember(onPdfDownloaded) {
         JwAcademicReportDownloadHandler(onPdfDownloaded)
+    }
+
+    suspend fun refreshAndShowResult(controller: JwAcademicRefreshController, view: WebView) {
+        val result = runCatching {
+            controller.refresh { script -> view.evaluateJwScript(script) }
+        }.getOrElse { JwAcademicRefreshResult("刷新失败，本机数据保持不变") }
+        isRefreshing = false
+        val savedArchive = result.diagnostics?.let { diagnostic ->
+            runCatching {
+                withContext(Dispatchers.IO) { diagnosticArchive.write(diagnostic) }
+            }.getOrNull()
+        }
+        if (result.diagnostics != null) diagnosticArchiveFile = savedArchive
+
+        val message = when {
+            savedArchive != null -> "${result.message}；已保存脱敏诊断包（含汇总学分）"
+            result.diagnostics != null -> "${result.message}；诊断包保存失败"
+            else -> result.message
+        }
+        val snackbarResult = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = if (savedArchive != null) "分享诊断包" else null,
+            withDismissAction = savedArchive != null,
+        )
+        if (snackbarResult == SnackbarResult.ActionPerformed && savedArchive != null) {
+            runCatching { shareDiagnosticArchive(context, savedArchive) }
+                .onFailure { snackbarHostState.showSnackbar("无法打开分享面板") }
+        }
     }
 
     fun navigateBack() {
@@ -102,6 +156,21 @@ fun JwAcademicReportScreen(
                     }
                 },
                 actions = {
+                    diagnosticArchiveFile?.let { archive ->
+                        IconButton(
+                            onClick = {
+                                runCatching { shareDiagnosticArchive(context, archive) }
+                                    .onFailure {
+                                        refreshScope.launch {
+                                            snackbarHostState.showSnackbar("无法打开分享面板")
+                                        }
+                                    }
+                            },
+                            modifier = Modifier.testTag("jw_academic_diagnostic_share_button"),
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = "分享脱敏诊断包")
+                        }
+                    }
                     // 仅官方学业完成查询页挂载刷新控制器；证书申请等页面无此动作。
                     if (refreshController != null) {
                         IconButton(
@@ -115,13 +184,7 @@ fun JwAcademicReportScreen(
                                 } else {
                                     isRefreshing = true
                                     refreshScope.launch {
-                                        val message = runCatching {
-                                            refreshController.refresh { script ->
-                                                view.evaluateJwScript(script)
-                                            }
-                                        }.getOrElse { "刷新失败，本机数据保持不变" }
-                                        isRefreshing = false
-                                        snackbarHostState.showSnackbar(message)
+                                        refreshAndShowResult(refreshController, view)
                                     }
                                 }
                             },
@@ -304,12 +367,8 @@ fun JwAcademicReportScreen(
                                 isRefreshing = true
                                 Log.d(JW_ACADEMIC_REPORT_TAG, "autoRefresh=start")
                                 refreshScope.launch {
-                                    val message = runCatching {
-                                        controller.refresh { script -> view.evaluateJwScript(script) }
-                                    }.getOrElse { "刷新失败，本机数据保持不变" }
-                                    isRefreshing = false
+                                    refreshAndShowResult(controller, view)
                                     Log.d(JW_ACADEMIC_REPORT_TAG, "autoRefresh=done")
-                                    snackbarHostState.showSnackbar(message)
                                     kotlinx.coroutines.delay(1_500)
                                     onAutoRefreshFinished()
                                 }
@@ -391,6 +450,21 @@ fun JwAcademicReportScreen(
             onRelease = { it.destroy() },
         )
     }
+}
+
+private fun shareDiagnosticArchive(context: Context, archive: File) {
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        archive,
+    )
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/zip"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        clipData = ClipData.newUri(context.contentResolver, "脱敏诊断包", uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(sendIntent, "分享脱敏诊断包"))
 }
 
 private fun sanitizeDiagnosticUrl(value: String?): String =

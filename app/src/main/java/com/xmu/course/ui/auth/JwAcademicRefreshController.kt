@@ -1,6 +1,7 @@
 package com.xmu.course.ui.auth
 
 import com.xmu.course.data.academiccompletion.AcademicRefreshOutcome
+import com.xmu.course.data.academiccompletion.AcademicRefreshDiagnostics
 import com.xmu.course.data.academiccompletion.JwAcademicRefreshCoordinator
 import com.xmu.course.data.academiccompletion.AcademicCompletionStore
 import com.xmu.course.data.jwgrades.GradeRefreshOutcome
@@ -9,6 +10,11 @@ import com.xmu.course.data.jwgrades.JwGradeStore
 import com.xmu.course.adapter.jw.JwWebViewReadExecutor
 import java.time.LocalDate
 import kotlinx.coroutines.delay
+
+data class JwAcademicRefreshResult(
+    val message: String,
+    val diagnostics: AcademicRefreshDiagnostics? = null,
+)
 
 /**
  * 用户显式点击的一次「刷新学业数据」编排：xywccx 培养方案 + cjcx 成绩单。
@@ -22,7 +28,7 @@ class JwAcademicRefreshController(
     private val todayProvider: () -> String = { LocalDate.now().toString() },
 ) {
     /** 返回给用户的一句话结果；任一源失败都只影响该源，旧缓存保持不变。 */
-    suspend fun refresh(evaluate: suspend (String) -> String?): String {
+    suspend fun refresh(evaluate: suspend (String) -> String?): JwAcademicRefreshResult {
         val executor = JwWebViewReadExecutor(
             evaluate = evaluate,
             await = { delayMs -> delay(delayMs) },
@@ -36,7 +42,11 @@ class JwAcademicRefreshController(
             executor = executor,
             store = gradeStore,
         ).refresh()
-        return describe(academic, grades)
+        val diagnostics = (academic as? AcademicRefreshOutcome.RejectedByValidation)?.diagnostics
+        return JwAcademicRefreshResult(
+            message = describe(academic, grades),
+            diagnostics = diagnostics,
+        )
     }
 
     companion object {
