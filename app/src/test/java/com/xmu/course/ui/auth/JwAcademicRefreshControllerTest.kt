@@ -1,6 +1,7 @@
 package com.xmu.course.ui.auth
 
 import com.xmu.course.data.academiccompletion.AcademicRefreshOutcome
+import com.xmu.course.data.academiccompletion.AcademicCreditReconciliationSummary
 import com.xmu.course.data.jwgrades.GradeRefreshOutcome
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -50,6 +51,35 @@ class JwAcademicRefreshControllerTest {
         )
         assertTrue(message.contains("培养方案已更新"))
         assertTrue(message.contains("确认学生身份"))
+    }
+
+    @Test
+    fun importedPlanTotalMismatchShowsExplicitWarningAndBothTotals() {
+        val message = JwAcademicRefreshController.describe(
+            academic = AcademicRefreshOutcome.Success(
+                courseCount = 10,
+                pendingManualCount = 2,
+                creditReconciliationWarning = AcademicCreditReconciliationSummary(
+                    coursePoolRowCount = 443,
+                    coursePoolDistinctCodeCount = 443,
+                    semesterCourseRowCount = 20,
+                    semesterCourseDistinctCodeCount = 12,
+                    inPlanCourseCount = 10,
+                    outOfPlanCourseCount = 2,
+                    inPlanMissingCreditCount = 0,
+                    confirmedInPlanCreditCount = 10,
+                    inPlanCreditsSum = "22.25",
+                    planLevelCredits = "24.25",
+                    reconciledWithPlanLevel = false,
+                ),
+            ),
+            grades = GradeRefreshOutcome.Success(entryCount = 0, semesterCount = 0),
+        )
+        assertTrue(message.contains("已导入可用课程明细"))
+        assertTrue(message.contains("结果可能不完整"))
+        assertTrue(message.contains("22.25"))
+        assertTrue(message.contains("24.25"))
+        assertTrue(message.contains("相差 2 学分"))
     }
 
     @Test

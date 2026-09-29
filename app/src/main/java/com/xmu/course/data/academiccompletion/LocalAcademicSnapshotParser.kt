@@ -19,10 +19,11 @@ private fun rejected(reasons: List<String>): SnapshotImportResult.Rejected =
  *
  * 职责边界（Phase 10.1 审查决议）：
  * - 外部来源格式只在这里被理解；内部持久化模型与本解析器解耦；
- * - fail-closed：已知必填字段缺失/非法/对账不一致 => 整单拒绝；
+ * - fail-closed：已知必填字段缺失/非法/内部对账不一致 => 整单拒绝；
+ *   方案级合计不一致仅允许显式调用方选择宽容导入；
  *   未知额外字段宽容忽略（required known field fail-closed, unknown extra tolerant）；
  * - 脱敏：来源中的学生身份字段（姓名/学号）一律不读入内部模型、不持久化；
- * - 无网络、无来源系统访问，只处理用户主动选择的本地文件。
+ * - 无网络、无来源系统访问，只解析调用方提供的 JSON。
  */
 object LocalAcademicSnapshotParser {
 
@@ -30,7 +31,10 @@ object LocalAcademicSnapshotParser {
     private val TimestampPattern = Regex("\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}(:\\d{2})?")
 
     /** 稳定课程身份：单一学期快照内以课程代码为 exact identity；重复即拒绝（不做模糊匹配）。 */
-    fun parse(rawJson: String): SnapshotImportResult {
+    fun parse(
+        rawJson: String,
+        allowPlanLevelMismatch: Boolean = false,
+    ): SnapshotImportResult {
         val root = try {
             JSONObject(rawJson)
         } catch (error: JSONException) {
@@ -107,7 +111,7 @@ object LocalAcademicSnapshotParser {
             return rejected(reasons)
         }
 
-        // —— 对账校验（HANDOFF §7.4 验证口径）：方案内确认学分求和必须与来源两处总计精确一致 ——
+        // —— 对账校验：课程明细必须与来源自身 totals 对齐；方案级合计可由刷新调用方显式降级为警告 ——
         val inPlanSumText = CreditsDecimal.sum(
             enrolled.filter { it.inPlan }.mapNotNull { it.creditsText },
         )
@@ -117,7 +121,7 @@ object LocalAcademicSnapshotParser {
         val planLevel = BigDecimal(planLevelTotal)
         val totalsValue = BigDecimal(totalsSum)
         val inPlanSum = BigDecimal(inPlanSumText)
-        if (inPlanSum.compareTo(planLevel) != 0) {
+        if (inPlanSum.compareTo(planLevel) != 0 && !allowPlanLevelMismatch) {
             return rejected(
                 listOf(
                     "方案内课程学分求和（${inPlanSumText}）与方案级本学期已选合计（${planLevelTotal}）不一致，" +

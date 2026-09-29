@@ -99,6 +99,27 @@ class LocalAcademicSnapshotParserTest {
     }
 
     @Test
+    fun planReconciliationMismatchCanBeImportedWhenExplicitlyAllowed() {
+        val result = LocalAcademicSnapshotParser.parse(
+            snapshotJson(planLevelTotal = "4.00"),
+            allowPlanLevelMismatch = true,
+        )
+        assertTrue("explicit refresh override should accept the plan-level mismatch", result is SnapshotImportResult.Success)
+        val snapshot = (result as SnapshotImportResult.Success).snapshot
+        assertEquals(0, java.math.BigDecimal("4.00").compareTo(java.math.BigDecimal(snapshot.plan.sourceThisSemesterTotalText)))
+    }
+
+    @Test
+    fun internalTotalsMismatchRemainsRejectedWhenPlanLevelMismatchIsAllowed() {
+        val result = LocalAcademicSnapshotParser.parse(
+            snapshotJson(planLevelTotal = "4.00", totalsSum = "9.99"),
+            allowPlanLevelMismatch = true,
+        )
+        val reasons = (result as? SnapshotImportResult.Rejected)?.reasons.orEmpty()
+        assertTrue(reasons.any { it.contains("totals 对账字段") && it.contains("自相矛盾") })
+    }
+
+    @Test
     fun totalsFieldMismatchRejected() {
         val reasons = rejectReasons(snapshotJson(totalsSum = "9.99"))
         assertTrue(reasons.any { it.contains("自相矛盾") })

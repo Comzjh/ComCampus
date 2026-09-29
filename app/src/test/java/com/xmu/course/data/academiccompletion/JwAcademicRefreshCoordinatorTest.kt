@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 刷新编排测试：成功导入、失败保缓存、403 分类、结构异常分类。
+ * 刷新编排测试：成功导入、失败保缓存、学分差异导入并警告、403 分类、结构异常分类。
  *
  * 全部合成数据；假页面按端点路径返回固定信封。
  */
@@ -158,24 +158,25 @@ class JwAcademicRefreshCoordinatorTest {
     }
 
     @Test
-    fun reconciliationMismatchIsRejectedAndCachePreserved() = runTest {
+    fun reconciliationMismatchImportsSnapshotAndReturnsWarning() = runTest {
         val store = newStore()
         coordinator(store, FakeJwPage(responses = successResponses())).refresh()
         val before = (store.current() as AcademicCompletionStore.State.Loaded).snapshot
-        // XKXF=99 与课程求和不一致 → 解析器整单拒绝
+        // XKXF=99 与课程求和不一致：保留可解析的课程明细并导入，同时携带汇总警告。
         val skewed = successResponses().toMutableMap().apply {
             put("cxfakzyxxfgj", 200 to envelope("cxfakzyxxfgj", """[{"XKXF":"99"}]"""))
         }
         val outcome = coordinator(store, FakeJwPage(responses = skewed)).refresh()
-        assertTrue(outcome is AcademicRefreshOutcome.RejectedByValidation)
-        val diagnostic = (outcome as AcademicRefreshOutcome.RejectedByValidation).diagnostics
-        assertEquals(AcademicRefreshDiagnosticCode.PLAN_CREDIT_TOTAL_MISMATCH, diagnostic?.code)
-        assertEquals(AcademicRefreshDiagnosticStage.SNAPSHOT_VALIDATION, diagnostic?.stage)
-        assertEquals("3", diagnostic?.reconciliation?.inPlanCreditsSum)
-        assertEquals("99", diagnostic?.reconciliation?.planLevelCredits)
-        assertEquals(false, diagnostic?.reconciliation?.reconciledWithPlanLevel)
+        assertTrue(outcome is AcademicRefreshOutcome.Success)
+        val success = outcome as AcademicRefreshOutcome.Success
+        val warning = success.creditReconciliationWarning
+        assertEquals("3", warning?.inPlanCreditsSum)
+        assertEquals("99", warning?.planLevelCredits)
+        assertEquals(false, warning?.reconciledWithPlanLevel)
         val after = (store.current() as AcademicCompletionStore.State.Loaded).snapshot
-        assertEquals(before, after)
+        assertTrue("accepted snapshot must replace the previous snapshot", before != after)
+        assertEquals("99", after.plan.sourceThisSemesterTotalText)
+        assertEquals(1, success.courseCount)
     }
 
     @Test

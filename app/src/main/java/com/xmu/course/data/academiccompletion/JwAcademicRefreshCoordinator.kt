@@ -13,8 +13,12 @@ import org.json.JSONObject
  * 只携带安全元数据（计数/类别），绝不携带响应体、身份或成绩内容。
  */
 sealed interface AcademicRefreshOutcome {
-    /** 成功：快照已导入本地（原子覆盖，旧数据被新权威数据替换）。 */
-    data class Success(val courseCount: Int, val pendingManualCount: Int) : AcademicRefreshOutcome
+    /** 成功：快照已导入本地；若方案级合计不同，携带汇总供 UI 明确警告。 */
+    data class Success(
+        val courseCount: Int,
+        val pendingManualCount: Int,
+        val creditReconciliationWarning: AcademicCreditReconciliationSummary? = null,
+    ) : AcademicRefreshOutcome
 
     /** 页面不在官方域或未登录：需要用户在官方 WebView 手动登录。 */
     data object AuthRequired : AcademicRefreshOutcome
@@ -134,9 +138,13 @@ class JwAcademicRefreshCoordinator(
                 )
             is AssembleResult.Success -> assembled.sourceJson
         }
-        return when (val parsed = LocalAcademicSnapshotParser.parse(sourceJson)) {
+        val assembledSuccess = assembled as AssembleResult.Success
+        val parsed = LocalAcademicSnapshotParser.parse(
+            sourceJson,
+            allowPlanLevelMismatch = !assembledSuccess.diagnostics.reconciledWithPlanLevel,
+        )
+        return when (parsed) {
             is SnapshotImportResult.Rejected -> {
-                val assembledSuccess = assembled as AssembleResult.Success
                 val hasPlanCreditMismatch = parsed.reasons.any { reason ->
                     reason.startsWith("方案内课程学分求和（") &&
                         reason.contains("与方案级本学期已选合计（")
@@ -159,6 +167,9 @@ class JwAcademicRefreshCoordinator(
                 AcademicRefreshOutcome.Success(
                     courseCount = fetchedSnapshot.enrolledCourses.size,
                     pendingManualCount = fetchedSnapshot.pendingManualCourses.size,
+                    creditReconciliationWarning = assembledSuccess.diagnostics.takeIf {
+                        !it.reconciledWithPlanLevel
+                    },
                 )
             }
         }

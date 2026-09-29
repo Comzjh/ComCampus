@@ -28,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -128,6 +129,7 @@ fun JwAcademicReportScreen(
             message = message,
             actionLabel = if (savedArchive != null) "分享诊断包" else null,
             withDismissAction = savedArchive != null,
+            duration = if (result.isWarning) SnackbarDuration.Long else SnackbarDuration.Short,
         )
         if (snackbarResult == SnackbarResult.ActionPerformed && savedArchive != null) {
             runCatching { shareDiagnosticArchive(context, savedArchive) }

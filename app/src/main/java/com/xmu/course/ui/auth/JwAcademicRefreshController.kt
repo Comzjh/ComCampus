@@ -8,12 +8,14 @@ import com.xmu.course.data.jwgrades.GradeRefreshOutcome
 import com.xmu.course.data.jwgrades.JwGradeRefreshCoordinator
 import com.xmu.course.data.jwgrades.JwGradeStore
 import com.xmu.course.adapter.jw.JwWebViewReadExecutor
+import java.math.BigDecimal
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
 data class JwAcademicRefreshResult(
     val message: String,
     val diagnostics: AcademicRefreshDiagnostics? = null,
+    val isWarning: Boolean = false,
 )
 
 /**
@@ -43,9 +45,12 @@ class JwAcademicRefreshController(
             store = gradeStore,
         ).refresh()
         val diagnostics = (academic as? AcademicRefreshOutcome.RejectedByValidation)?.diagnostics
+        val isWarning = (academic as? AcademicRefreshOutcome.Success)
+            ?.creditReconciliationWarning != null
         return JwAcademicRefreshResult(
             message = describe(academic, grades),
             diagnostics = diagnostics,
+            isWarning = isWarning,
         )
     }
 
@@ -63,8 +68,16 @@ class JwAcademicRefreshController(
 
         /** null 表示静默（成功已由组合文案表达时保留，其他同源失败去重后不重复播报）。 */
         private fun academicMessage(outcome: AcademicRefreshOutcome): String? = when (outcome) {
-            is AcademicRefreshOutcome.Success ->
-                "培养方案已更新：在修 ${outcome.courseCount} 门，待确认学分 ${outcome.pendingManualCount} 门"
+            is AcademicRefreshOutcome.Success -> {
+                val summary = "培养方案已更新：在修 ${outcome.courseCount} 门，待确认学分 ${outcome.pendingManualCount} 门"
+                val warning = outcome.creditReconciliationWarning ?: return summary
+                val difference = BigDecimal(warning.planLevelCredits)
+                    .subtract(BigDecimal(warning.inPlanCreditsSum))
+                    .abs()
+                    .stripTrailingZeros()
+                    .toPlainString()
+                "已导入可用课程明细，但结果可能不完整：课程明细合计 ${warning.inPlanCreditsSum} 学分，方案级合计 ${warning.planLevelCredits} 学分，相差 $difference 学分；在修 ${outcome.courseCount} 门，待确认学分 ${outcome.pendingManualCount} 门"
+            }
             AcademicRefreshOutcome.AuthRequired -> "未登录教务：请先在页面内完成登录后重试"
             AcademicRefreshOutcome.PageNotReady -> "学校页面尚未就绪，请稍候重试"
             AcademicRefreshOutcome.ServerUnavailable -> "教务服务繁忙，本机数据保持不变，请稍后重试"
