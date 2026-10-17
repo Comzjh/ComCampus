@@ -1,10 +1,15 @@
 package com.xmu.course.ui.todo
 
+import com.xmu.course.ui.components.appDatePickerColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +34,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.xmu.course.ui.components.AppButton as Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +43,8 @@ import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppShapes
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.action
+import com.xmu.course.ui.components.appPressFeedback
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -45,14 +52,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.xmu.course.ui.components.AppIconButton as IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.xmu.course.ui.components.AppOutlinedButton as OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTextButton as TextButton
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -203,7 +210,7 @@ private fun TodoScreenContent(
                     if (isRefreshing) {
                         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.heightIn(max = 22.dp))
                     } else {
-                        Icon(Icons.Filled.Refresh, contentDescription = "刷新畅课待办", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Filled.Refresh, contentDescription = "刷新畅课待办", tint = MaterialTheme.colorScheme.action)
                     }
                 }
                 },
@@ -349,25 +356,26 @@ private fun TodoListContent(
         verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
     ) {
         item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                maxItemsInEachRow = 3,
             ) {
                 TodoBucket.entries.forEach { bucket ->
+                    val interactionSource = remember(bucket) { MutableInteractionSource() }
                     FilterChip(
                         selected = selectedBucket == bucket,
                         onClick = { selectedBucket = bucket },
-                        label = { Text(bucket.label) },
+                        label = { Text(bucket.label, fontWeight = if (selectedBucket == bucket) FontWeight.SemiBold else FontWeight.Medium) },
+                        interactionSource = interactionSource,
+                        border = BorderStroke(1.dp, if (selectedBucket == bucket) MaterialTheme.colorScheme.action else MaterialTheme.colorScheme.outlineVariant),
                         shape = AppShapes.Button,
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            selectedLabelColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.action,
                         ),
                         modifier = Modifier
-                            .weight(1f)
                             .heightIn(min = 48.dp)
+                            .appPressFeedback(interactionSource)
                             .testTag("todo_filter_${bucket.name.lowercase()}"),
                     )
                 }
@@ -479,15 +487,23 @@ private fun TodoItem(
         Modifier
             .fillMaxWidth()
             .padding(
-                start = AppSpacing.Lg,
+                start = AppSpacing.Md,
                 end = AppSpacing.Xs,
-                top = AppSpacing.Md,
-                bottom = AppSpacing.Md,
+                top = AppSpacing.Sm,
+                bottom = AppSpacing.Sm,
             ),
         verticalAlignment = Alignment.Top,
     ) {
-        val fillColor = if (todo.completed) MaterialTheme.colorScheme.primary else Color.Transparent
-        val ringColor = if (todo.completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+        val fillColor by animateColorAsState(
+            targetValue = if (todo.completed) MaterialTheme.colorScheme.primary else Color.Transparent,
+            animationSpec = tween(140),
+            label = "todo-completion-fill",
+        )
+        val ringColor by animateColorAsState(
+            targetValue = if (todo.completed) MaterialTheme.colorScheme.action else MaterialTheme.colorScheme.outline,
+            animationSpec = tween(140),
+            label = "todo-completion-ring",
+        )
         // Apple Reminders 风格圆形完成控件：空心环 -> 实心对勾。
         Box(
             modifier = Modifier
@@ -560,8 +576,7 @@ private fun TodoItem(
                             modifier = Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            softWrap = true,
                         )
                     }
                     countdown?.let { label ->
@@ -629,6 +644,7 @@ private fun TodoEditorDialog(
     onSave: (String, String, Long?, TodoCourseOptionModel?) -> Unit,
 ) {
     var title by remember(todo?.id?.value) { mutableStateOf(todo?.title.orEmpty()) }
+    var titleInteracted by remember(todo?.id?.value) { mutableStateOf(false) }
     var description by remember(todo?.id?.value) { mutableStateOf(todo?.description.orEmpty()) }
     var deadline by remember(todo?.id?.value) { mutableStateOf(todo?.deadline) }
     var deadlineIsDateOnly by remember(todo?.id?.value) {
@@ -664,10 +680,10 @@ private fun TodoEditorDialog(
             ) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { titleInteracted = true; title = it },
                     label = { Text("标题") },
                     singleLine = true,
-                    isError = title.isBlank(),
+                    isError = titleInteracted && title.isBlank(),
                     shape = AppShapes.Button,
                     colors = fieldColors,
                     modifier = Modifier.fillMaxWidth().testTag("todo_editor_title"),
@@ -776,7 +792,7 @@ private fun TodoEditorDialog(
                     modifier = Modifier.testTag("todo_editor_datepicker_cancel"),
                 ) { Text("取消") }
             },
-        ) { DatePicker(state = datePickerState) }
+        ) { DatePicker(state = datePickerState, colors = appDatePickerColors()) }
     }
 }
 

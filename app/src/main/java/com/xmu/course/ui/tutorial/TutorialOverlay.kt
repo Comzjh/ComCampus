@@ -1,5 +1,8 @@
 package com.xmu.course.ui.tutorial
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateRectAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -20,14 +23,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
+import com.xmu.course.ui.components.AppButton as Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +47,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
 /**
- * Dimmed overlay with a red rounded stroke around [targetRect].
+ * Dimmed overlay with a brand-blue rounded stroke around [targetRect].
  * Clicks outside the highlight are swallowed (tutorial is not dismissed).
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -70,9 +75,6 @@ fun TutorialOverlay(
             ) { },
     ) {
         val density = LocalDensity.current
-        val strokePx = with(density) { 2.5.dp.toPx() }
-        val padPx = with(density) { 3.dp.toPx() }
-        val cornerPx = with(density) { 12.dp.toPx() }
         // TUT-007: a target can be taller than the space left under it, and fixed
         // bottom placement then hides its lower edge. Pick the side with the larger
         // real gap and cap the card at that gap. The floor is the height needed to
@@ -90,18 +92,18 @@ fun TutorialOverlay(
         }
         Canvas(modifier = Modifier.matchParentSize()) {
             drawRect(color = Color.Black.copy(alpha = 0.45f))
-            targetRect?.let { rect ->
-                drawRoundRect(
-                    color = Color(0xFFE53935),
-                    topLeft = Offset(rect.left - padPx, rect.top - padPx),
-                    size = Size(rect.width + padPx * 2, rect.height + padPx * 2),
-                    cornerRadius = CornerRadius(cornerPx, cornerPx),
-                    style = Stroke(width = strokePx),
-                )
-            }
+        }
+        // Keep the optional animation in its own node. Removing an anchor must not
+        // replace the composition group that owns the current copy and controls.
+        if (targetRect != null) {
+            TutorialTargetHighlight(targetRect, Modifier.matchParentSize())
         }
         IconButton(
             onClick = onDismiss,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = Color.Black.copy(alpha = 0.24f),
+                contentColor = Color.White,
+            ),
             modifier = Modifier.align(Alignment.TopEnd),
         ) {
             Icon(imageVector = Icons.Default.Close, contentDescription = "关闭教程")
@@ -119,24 +121,30 @@ fun TutorialOverlay(
             Column(
                 modifier = Modifier.padding(16.dp),
             ) {
-                Text(
-                    text = "第 ${stepIndex + 1}/$totalSteps 步 · ${step.title}",
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                Crossfade(
+                    targetState = "第 ${stepIndex + 1}/$totalSteps 步 · ${step.title}",
+                    animationSpec = tween(160),
+                    label = "tutorialHeading",
+                ) { heading ->
+                    Text(text = heading, style = MaterialTheme.typography.titleSmall)
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 // Only the copy scrolls; the step heading and the controls stay pinned.
-                Text(
-                    text = when {
-                        // D5：无目标引导步是设计如此，不能说成“找不到内容”。
-                        step.targetKey == null -> step.message
-                        targetRect == null -> "当前页面没有可用教程内容"
-                        else -> step.message
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
+                val message = when {
+                    step.targetKey == null -> step.message
+                    targetRect == null -> "当前页面没有可用教程内容"
+                    else -> step.message
+                }
+                Crossfade(
+                    targetState = message,
+                    animationSpec = tween(160),
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState()),
-                )
+                    label = "tutorialCopy",
+                ) { copy ->
+                    Text(text = copy, style = MaterialTheme.typography.bodyMedium)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth().testTag("tutorial_secondary_actions"),
@@ -185,5 +193,28 @@ fun TutorialOverlay(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TutorialTargetHighlight(targetRect: Rect, modifier: Modifier) {
+    val density = LocalDensity.current
+    val strokePx = with(density) { 2.5.dp.toPx() }
+    val padPx = with(density) { 3.dp.toPx() }
+    val cornerPx = with(density) { 12.dp.toPx() }
+    // A newly available anchor starts at its actual position, never at (0, 0).
+    val highlightRect by animateRectAsState(
+        targetValue = targetRect,
+        animationSpec = tween(180),
+        label = "tutorialHighlight",
+    )
+    Canvas(modifier = modifier) {
+        drawRoundRect(
+            color = Color(0xFF66CCFF),
+            topLeft = Offset(highlightRect.left - padPx, highlightRect.top - padPx),
+            size = Size(highlightRect.width + padPx * 2, highlightRect.height + padPx * 2),
+            cornerRadius = CornerRadius(cornerPx, cornerPx),
+            style = Stroke(width = strokePx),
+        )
     }
 }

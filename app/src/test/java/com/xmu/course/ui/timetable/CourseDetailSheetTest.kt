@@ -106,4 +106,16 @@ class CourseDetailSheetTest {
         composeRule.onNodeWithText("2026-2027秋季").assertIsDisplayed()
         composeRule.onNodeWithText("课程资料、作业、通知入口将在后续版本接入").assertIsDisplayed()
     }
+
+    @Test
+    fun `week label preserves exact continuous odd even and irregular sets`() {
+        assertEquals("第 1–16 周", formatCourseWeeks((1..16).toSet()))
+        assertEquals("第 1–15 周（单周）", formatCourseWeeks((1..15 step 2).toSet()))
+        assertEquals("第 2–16 周（双周）", formatCourseWeeks((2..16 step 2).toSet()))
+        val irregular = linkedSetOf(9, 1, 2, 6)
+        assertEquals("第 1、2、6、9 周", formatCourseWeeks(irregular))
+        assertEquals(listOf(9, 1, 2, 6), irregular.toList())
+        assertEquals("第 4 周", formatCourseWeeks(setOf(4)))
+        assertEquals("未设置周次", formatCourseWeeks(emptySet()))
+    }
 }

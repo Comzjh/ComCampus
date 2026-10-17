@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTopPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.onNodeWithText
@@ -142,6 +143,8 @@ class TutorialHostTest {
         composeRule.onNodeWithText("上一步").assertExists()
         composeRule.onNodeWithText("下一步").performClick()
         composeRule.waitForIdle()
+        composeRule.onNodeWithText("第 3/3 步", substring = true).assertExists()
+        composeRule.onNodeWithTag("tutorial_action_primary").assertIsDisplayed()
         composeRule.onNodeWithText("完成").assertExists()
         composeRule.onNodeWithText("完成").performClick()
         composeRule.waitForIdle()
@@ -189,9 +192,38 @@ class TutorialHostTest {
         composeRule.onNodeWithText("下一步").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("当前页面没有可用教程内容").assertExists()
+        composeRule.onNodeWithText("当前页面没有可用教程内容", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("下一步").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("完成").assertExists()
+    }
+
+    @Test
+    fun missingTargetCanReturnToAnAnchoredStep() {
+        setHostContent(tutorialId = "todo", anchors = setOf(TutorialTargetKey.TODO_LIST))
+        openTutorial()
+        composeRule.onNodeWithText("下一步").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("当前页面没有可用教程内容", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("上一步").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("第 1/3 步", substring = true).assertExists()
+        composeRule.onNodeWithText("你的待办都列在这里。", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("tutorial_action_primary").assertIsDisplayed()
+        composeRule.onNodeWithText("当前页面没有可用教程内容").assertDoesNotExist()
+    }
+
+    @Test
+    fun missingFirstTargetShowsFallbackAndCanAdvance() {
+        setHostContent(tutorialId = "todo", anchors = emptySet())
+        openTutorial()
+        composeRule.onNodeWithText("当前页面没有可用教程内容", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("下一步").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("第 2/3 步", substring = true).assertExists()
+        composeRule.onNodeWithTag("tutorial_action_primary").assertIsDisplayed()
     }
 
     @Test

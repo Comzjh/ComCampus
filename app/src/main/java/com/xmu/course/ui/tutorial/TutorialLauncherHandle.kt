@@ -4,8 +4,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import com.xmu.course.ui.components.AppIconButton as IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -29,7 +28,6 @@ fun TutorialLauncherHandle(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
