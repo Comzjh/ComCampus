@@ -23,7 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,7 +76,7 @@ fun AcademicGpaScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(AppSpacing.PagePadding),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.SectionGap),
         ) {
             item {
                 AppSectionCard(title = "本地计算 GPA", modifier = Modifier.testTag("academic_gpa_result_card")) {
@@ -92,7 +92,7 @@ fun AcademicGpaScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         AcademicGpaTone.NEEDS_CONFIRMATION -> Column(
-                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                         ) {
                             Text(
                                 "待确认，暂不出数",
@@ -108,12 +108,12 @@ fun AcademicGpaScreen(
                             )
                         }
                         AcademicGpaTone.COMPUTED -> Column(
-                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                         ) {
                             Text(
                                 uiState.summary.valueText.orEmpty(),
-                                style = MaterialTheme.typography.displayLarge,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.testTag("academic_gpa_computed"),
                             )
                             Text(
@@ -125,6 +125,7 @@ fun AcademicGpaScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(vertical = AppSpacing.Sm)
                                     .testTag("academic_gpa_primary_metrics"),
                                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
                             ) {
@@ -215,16 +216,16 @@ fun AcademicGpaScreen(
                         modifier = Modifier.testTag("academic_gpa_candidates"),
                     ) {
                         uiState.candidates.forEach { (courseName, semesterDisplay) ->
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = AppSpacing.Xxs),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .padding(vertical = AppSpacing.Sm),
+                                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                             ) {
                                 Text(
                                     courseName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 Text(
                                     semesterDisplay,
@@ -259,17 +260,17 @@ private fun AcademicGpaMetric(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
     ) {
         Text(
             value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.testTag(testTag),
         )
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -286,8 +287,8 @@ private fun PolicyOption(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppSpacing.Xs)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .padding(vertical = AppSpacing.Sm)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
@@ -297,6 +298,6 @@ private fun PolicyOption(
             onClick = null,
             modifier = Modifier.clearAndSetSemantics {},
         )
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }

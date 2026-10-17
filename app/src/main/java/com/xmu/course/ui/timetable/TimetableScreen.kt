@@ -1,43 +1,24 @@
 package com.xmu.course.ui.timetable
 
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,26 +31,17 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.testTag
 import com.xmu.course.domain.Course
-import com.xmu.course.domain.TimetableConfig
 import com.xmu.course.ui.background.TimetableBackground
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.tutorial.TutorialHost
@@ -77,9 +49,8 @@ import com.xmu.course.ui.tutorial.TutorialToolbarAction
 import com.xmu.course.ui.tutorial.TutorialTargetKey
 import com.xmu.course.ui.tutorial.tutorialTarget
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 /**
  * 课表页：周视图 + HorizontalPager 周切换 + 当前周定位 + 课程详情 + 手动添加。
@@ -98,17 +69,41 @@ private fun TimetableScreenContent(
     // 时间轴文字样式为全局显示偏好，经 ViewModel 透传，设置页修改后即时生效。
     val axisStyle by viewModel.axisStyle.collectAsState()
     val pagerState = rememberPagerState(initialPage = state.viewWeek - 1, pageCount = { state.totalWeeks })
-    val scope = rememberCoroutineScope()
     var showAddDialog by remember { mutableStateOf(false) }
     var addPrefill by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var showWeekPicker by remember { mutableStateOf(false) }
     var detailCourse by remember { mutableStateOf<Course?>(null) }
     val verticalScroll = rememberScrollState()
-    val viewingWeek by remember { derivedStateOf { pagerState.currentPage + 1 } }
+    val viewingWeek by remember {
+        derivedStateOf {
+            if (state.courses.isEmpty()) state.viewWeek else pagerState.currentPage + 1
+        }
+    }
 
-    // 只在课表/周数/数据状态变化时定位，避免 settled 回写 ViewModel 后再次触发滚动。
-    LaunchedEffect(state.timetable?.id, state.totalWeeks, state.hasData) {
-        if (state.hasData) pagerState.scrollToPage(state.viewWeek - 1)
+    // 先完成 ViewModel 的定位请求，再接收手动翻页；避免初始第 1 页抢先回写。
+    // 定位和观察共用一个 effect，新会话或选周会取消旧观察与未完成的滚动。
+    LaunchedEffect(
+        pagerState, state.timetable?.id, state.totalWeeks, state.hasData,
+        state.viewWeek, state.weekResetGeneration,
+    ) {
+        val timetableId = state.timetable?.id ?: return@LaunchedEffect
+        if (!state.hasData) return@LaunchedEffect
+        val requestedWeek = state.viewWeek
+        val resetGeneration = state.weekResetGeneration
+        pagerState.scrollToPage(requestedWeek - 1)
+        snapshotFlow { pagerState.isScrollInProgress to pagerState.settledPage }
+            .filter { (scrolling, _) -> !scrolling }
+            .map { (_, page) -> page + 1 }
+            .distinctUntilChanged()
+            .collect { settledWeek ->
+                val latest = viewModel.uiState.value
+                // 新请求可能先于下一次重组到达，旧 Pager 事件不能覆盖它。
+                if (latest.timetable?.id == timetableId && latest.viewWeek == requestedWeek &&
+                    latest.weekResetGeneration == resetGeneration && settledWeek != requestedWeek
+                ) {
+                    viewModel.selectWeek(settledWeek)
+                }
+            }
     }
 
     // Widget 点击后打开对应课程详情；详情展示一次后清除请求。
@@ -119,17 +114,8 @@ private fun TimetableScreenContent(
             onInitialCourseConsumed(requested)
         }
     }
-    // Pager 只有真正停稳后才同步回 ViewModel，避免拖动中频繁重组和状态回写。
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
-            .map { it + 1 }
-            .distinctUntilChanged()
-            .collect { viewModel.selectWeek(it) }
-    }
-
     fun goToWeek(week: Int) {
-        val target = week.coerceIn(1, state.totalWeeks)
-        scope.launch { pagerState.animateScrollToPage(target - 1) }
+        viewModel.selectWeek(week)
     }
 
     Box(modifier.fillMaxSize()) {
@@ -184,6 +170,9 @@ private fun TimetableScreenContent(
                                     state.timetable?.name ?: "ComCampus"
                                 },
                                 style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier
                                     .clickable(enabled = state.hasData) { showWeekPicker = true }
@@ -191,8 +180,10 @@ private fun TimetableScreenContent(
                             )
                             Text(
                                 text = if (state.hasData) state.timetable?.name ?: "ComCampus" else "尚无数据，请先导入",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     },
@@ -201,8 +192,9 @@ private fun TimetableScreenContent(
                             TextButton(
                                 onClick = { goToWeek(state.actualWeek) },
                                 colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                    contentColor = MaterialTheme.colorScheme.primary,
                                 ),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             ) { Text("回到本周") }
                         }
                         IconButton(
@@ -272,23 +264,25 @@ private fun TimetableScreenContent(
 
             else -> HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding).testTag("timetable_week_pager"),
             ) { page ->
-                TimetableWeekGrid(
-                    week = page + 1,
-                    courses = state.courses,
-                    skippedCourseIds = state.skippedCourseIds,
-                    showGrid = state.showGrid,
-                    config = state.config,
-                    axisStyle = axisStyle,
-                    startDate = state.timetable?.startDate,
-                    verticalScroll = verticalScroll,
-                    onCourseClick = { detailCourse = it },
-                    onCellClick = { day, section ->
-                        addPrefill = day to section
-                        showAddDialog = true
-                    },
-                )
+                Box(Modifier.fillMaxSize().testTag("timetable_week_page_${page + 1}")) {
+                    TimetableWeekGrid(
+                        week = page + 1,
+                        courses = state.courses,
+                        skippedCourseIds = state.skippedCourseIds,
+                        showGrid = state.showGrid,
+                        config = state.config,
+                        axisStyle = axisStyle,
+                        startDate = state.timetable?.startDate,
+                        verticalScroll = verticalScroll,
+                        onCourseClick = { detailCourse = it },
+                        onCellClick = { day, section ->
+                            addPrefill = day to section
+                            showAddDialog = true
+                        },
+                    )
+                }
             }
         }
     }
@@ -300,7 +294,6 @@ private fun TimetableScreenContent(
             viewWeek = state.viewWeek,
             actualWeek = state.actualWeek,
             onSelect = {
-                viewModel.selectWeek(it)
                 showWeekPicker = false
                 goToWeek(it)
             },

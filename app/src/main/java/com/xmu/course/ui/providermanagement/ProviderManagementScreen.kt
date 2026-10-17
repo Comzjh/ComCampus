@@ -18,10 +18,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -130,7 +130,7 @@ private fun ProviderCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = AppShapes.Card,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(Modifier.padding(AppSpacing.CardPadding)) {
@@ -165,15 +165,15 @@ private fun ProviderCard(
             )
             Text(
                 text = "同步: " + (SYNC_POLICY_DISPLAY_NAMES[descriptor.syncPolicy] ?: descriptor.syncPolicy.name),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = AppSpacing.Xs),
             )
             if (entry.dataOwner != null) {
-                OutlinedButton(
+                TextButton(
                     onClick = { onManageData(descriptor.id) },
                     modifier = Modifier
-                        .padding(top = AppSpacing.Lg)
+                        .padding(top = AppSpacing.Sm)
                         .align(androidx.compose.ui.Alignment.Start),
                 ) {
                     Text("管理数据")

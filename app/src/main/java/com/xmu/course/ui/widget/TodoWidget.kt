@@ -1,6 +1,7 @@
 package com.xmu.course.ui.widget
 
 import android.content.Context
+import com.xmu.course.data.widget.WidgetDataSource
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -29,19 +30,25 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.unit.ColorProvider
 
-/** Room-backed Todo widget; WorkManager handles hourly and manual sync. */
+/** Room-backed rendering; the existing worker handles hourly/manual network synchronization. */
 class TodoWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = WidgetRepository.loadTodos(context)
+        val updates = widgetDataUpdates(WidgetDataSource.from(context)) { WidgetRepository.loadTodos(context) }
         provideContent {
-            TodoWidgetContent(data)
+            LiveWidgetData(data, updates) { TodoWidgetContent(it) }
         }
     }
 }
 
 class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodoWidget()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        TodoWidgetSyncWork.scheduleHourly(context)
+    }
 }
 
 @Composable
@@ -60,12 +67,9 @@ fun TodoWidgetContent(
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "待办 · " + data.totalUnfinished,
+                    text = "待办 · ${data.totalUnfinished}",
                     modifier = GlanceModifier.defaultWeight(),
                     style = widgetTextStyle(
                         color = WidgetTheme.textPrimary,
@@ -77,12 +81,8 @@ fun TodoWidgetContent(
                     text = "↻ 刷新",
                     modifier = GlanceModifier
                         .clickable(actionRunCallback(RefreshTodoWidgetAction::class.java))
-                        .padding(horizontal = 4.dp, vertical = 3.dp),
-                    style = widgetTextStyle(
-                        color = WidgetTheme.textSecondary,
-                        size = 10.sp,
-                        weight = FontWeight.Medium,
-                    ),
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    style = widgetTextStyle(WidgetTheme.textSecondary, 11.sp, FontWeight.Medium),
                 )
             }
             Spacer(modifier = GlanceModifier.height(5.dp))

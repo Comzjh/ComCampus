@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,7 +25,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.xmu.course.data.academiccompletion.AcademicCompletionSnapshot
 import com.xmu.course.data.academiccompletion.AcademicCompletionStore
 import com.xmu.course.data.academiccompletion.CompletedCourseOutsidePlan
@@ -45,6 +49,7 @@ import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.AppListDivider
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
 import com.xmu.course.ui.tutorial.TutorialHost
 import com.xmu.course.ui.tutorial.TutorialTargetKey
 import com.xmu.course.ui.tutorial.TutorialToolbarAction
@@ -96,6 +101,7 @@ private fun AcademicCompletionScreenContent(
             is AcademicCompletionStore.State.Empty -> AppEmptyState(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .padding(horizontal = AppSpacing.PagePadding)
                     .testTag("academic_completion_empty"),
                 title = "本机还没有培养方案数据",
                 description = "回到「学业」页点击刷新，即可从教务获取培养方案进度。",
@@ -105,6 +111,7 @@ private fun AcademicCompletionScreenContent(
             is AcademicCompletionStore.State.StorageFailure -> AppEmptyState(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .padding(horizontal = AppSpacing.PagePadding)
                     .testTag("academic_completion_storage_failure"),
                 title = "本机快照读取失败",
                 description = state.message,
@@ -169,7 +176,7 @@ private fun SnapshotContent(
             end = AppSpacing.PagePadding,
             bottom = AppSpacing.PagePadding,
         ),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Md),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.SectionGap),
     ) {
         item {
             PlanOverviewCard(
@@ -211,27 +218,32 @@ private fun PlanOverviewCard(
     ) {
         Text(
             "${snapshot.plan.planName} · ${snapshot.semesterLabel}",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(vertical = AppSpacing.Xs),
         )
         Text(
             "已获学分 ${snapshot.plan.earnedCreditsText} / ${snapshot.plan.requiredCreditsText}",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(vertical = AppSpacing.Sm),
         )
         Text(
             "来源已确认 · 本学期已选 ${snapshot.plan.sourceThisSemesterTotalText} 学分",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.testTag("academic_completion_source_total"),
         )
         if (snapshot.hasLocalSupplement) {
             Text(
                 "本地补充 ${snapshot.localSupplementedTotalText()} 学分",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("academic_completion_local_total"),
             )
             Text(
                 "含本地确认合计 ${snapshot.combinedTotalIncludingLocalText()} 学分",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.testTag("academic_completion_combined_total"),
             )
             Text(
@@ -243,7 +255,7 @@ private fun PlanOverviewCard(
         // 本学期入口常驻（POL-004）：教程锚点不能只在“有学分待确认”时才存在，
         // 否则无待确认课程的用户会停在一步没有目标的教程上。待确认提示只是条件前缀。
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
         ) {
@@ -287,12 +299,15 @@ internal fun CompletedCourseRow(course: CompletedCourseOutsidePlan) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppSpacing.Sm),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = AppSpacing.Md),
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(course.courseName, style = MaterialTheme.typography.bodyLarge)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        ) {
+            Text(course.courseName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
                 course.termCode,
                 style = MaterialTheme.typography.bodySmall,
@@ -302,7 +317,8 @@ internal fun CompletedCourseRow(course: CompletedCourseOutsidePlan) {
         Text(
             "${course.creditsText} 学分 · 成绩 ${course.scoreText}",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.testTag("academic_completion_completed_${course.courseCode}"),
+            textAlign = TextAlign.End,
+            modifier = Modifier.widthIn(max = 144.dp).testTag("academic_completion_completed_${course.courseCode}"),
         )
     }
 }
@@ -318,12 +334,15 @@ internal fun EnrolledCourseRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppSpacing.Sm),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = AppSpacing.Md),
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(course.courseName, style = MaterialTheme.typography.bodyLarge)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        ) {
+            Text(course.courseName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             val meta = listOf(course.teacherNames, course.classCode)
                 .filter { it.isNotBlank() }
                 .joinToString(" · ")
@@ -349,7 +368,7 @@ internal fun EnrolledCourseRow(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
             ) {
-                Text("${effectiveCredits} 学分", style = MaterialTheme.typography.bodyLarge)
+                Text("${effectiveCredits} 学分", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 AppStatusChip(
                     label = "本地确认",
                     tone = StatusTone.Info,
@@ -359,7 +378,8 @@ internal fun EnrolledCourseRow(
             effectiveCredits != null -> Text(
                 "${effectiveCredits} 学分",
                 style = MaterialTheme.typography.bodyLarge,
-                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.End,
                 modifier = Modifier.testTag("academic_completion_credits_${course.courseCode}"),
             )
             else -> TextButton(
@@ -383,9 +403,10 @@ internal fun CreditInputDialog(
         onDismissRequest = onDismiss,
         title = { Text("填入学分") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
-                Text(course.courseName, style = MaterialTheme.typography.titleSmall)
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Md)) {
+                Text(course.courseName, style = MaterialTheme.typography.titleMedium)
                 androidx.compose.material3.OutlinedTextField(
+                    shape = AppShapes.Button,
                     value = value,
                     onValueChange = onValueChange,
                     label = { Text("学分（0 到 10，十进制）") },

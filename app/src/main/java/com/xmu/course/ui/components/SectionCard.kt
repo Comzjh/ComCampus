@@ -46,8 +46,8 @@ fun AppSectionCard(
                 action?.invoke()
             }
             Column(
-                modifier = Modifier.padding(top = AppSpacing.Sm),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                modifier = Modifier.padding(top = AppSpacing.Md),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
             ) {
                 content()
             }

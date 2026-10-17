@@ -318,6 +318,38 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
+    fun todoFeatureContractDoesNotDependOnDataImplementation() {
+        val featureRoot = moduleSourceRoot("core-contracts").resolve(
+            Paths.get("com", "xmu", "course", "contracts", "todo"),
+        )
+        val forbidden = listOf(
+            "TodoEntity",
+            "TodoDao",
+            "com.xmu.course.data.todo.TodoRepository",
+            "TodoSource",
+            "UpdateTodoCommand",
+            "android.",
+            "androidx.",
+            "com.xmu.course.data.",
+            "com.xmu.course.data.local.",
+            "com.xmu.course.data.tronclass.",
+        )
+        val featureFiles = kotlinFiles(featureRoot)
+        assertTrue("Todo contracts must contain source files", featureFiles.isNotEmpty())
+        val violations = featureFiles
+            .flatMap { file ->
+                Files.readAllLines(file).mapIndexedNotNull { index, line ->
+                    if (forbidden.any(line::contains)) "${file}:${index + 1}: $line" else null
+                }
+            }
+
+        assertTrue(
+            "Todo feature contract must remain independent from data implementations: $violations",
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
     fun todoViewModelUsesRefreshContractNotLegacyCoordinator() {
         val file = sourceRoot("com", "xmu", "course", "ui", "todo")
             .resolve("TodoViewModel.kt")
@@ -792,7 +824,7 @@ class ArchitectureBoundaryTest {
     fun timetableFeatureContractDoesNotExposeIntegrationInternals() {
         val featureRoots = listOf(
             moduleSourceRoot("core-contracts").resolve(
-                Paths.get("com", "xmu", "course", "contracts", "timetable", "model"),
+                Paths.get("com", "xmu", "course", "contracts", "timetable"),
             ),
         )
         val forbidden = listOf(
@@ -810,7 +842,9 @@ class ArchitectureBoundaryTest {
             "androidx.",
         )
         val violations = featureRoots.flatMap { featureRoot ->
-            kotlinFiles(featureRoot).flatMap { file ->
+            val featureFiles = kotlinFiles(featureRoot)
+            assertTrue("Timetable contracts must contain source files", featureFiles.isNotEmpty())
+            featureFiles.flatMap { file ->
                 Files.readAllLines(file).mapIndexedNotNull { index, line ->
                     if (forbidden.any(line::contains)) "${file}:${index + 1}: $line" else null
                 }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
@@ -46,15 +47,15 @@ class TodoViewModel(
     private val syncMutex = Mutex()
 
     private var courseOptions: List<TodoCourseOptionModel> = emptyList()
+    private val courseOptionsMutex = Mutex()
+    private var todoReadFailed = false
 
     init {
         viewModelScope.launch {
-            runCatching { repository.getCourseOptions() }
-                .onSuccess { courseOptions = it; refreshWithOptions() }
-        }
-        viewModelScope.launch {
             repository.observeTodos()
                 .catch { error ->
+                    if (error is CancellationException) throw error
+                    todoReadFailed = true
                     _state.value = TodoState.Error(
                         message = "待办数据读取失败，请稍后重试",
                         todos = currentTodos(),
@@ -62,11 +63,14 @@ class TodoViewModel(
                     )
                 }
                 .collect { todos ->
+                    todoReadFailed = false
                     _state.value = if (todos.isEmpty()) {
                         TodoState.Empty(courseOptions)
                     } else {
                         TodoState.Success(todos, courseOptions)
                     }
+                    // Other screens can import Todos directly, without this ViewModel's refresh methods.
+                    reloadCourseOptions()
                 }
         }
     }
@@ -87,7 +91,7 @@ class TodoViewModel(
                         courseReference = course?.reference,
                     ),
                 )
-            }.onFailure { showError("待办保存失败，请重试") }
+            }.onFailure { showOperationError("待办保存失败，请重试", it) }
         }
     }
 
@@ -108,21 +112,21 @@ class TodoViewModel(
                     courseReference = course?.reference,
                 )
                 repository.updateTodo(command)
-            }.onFailure { showError("待办修改失败，请重试") }
+            }.onFailure { showOperationError("待办修改失败，请重试", it) }
         }
     }
 
     fun setCompleted(id: Long, completed: Boolean) {
         viewModelScope.launch {
             runCatching { repository.setCompleted(TodoFeatureId(id), completed) }
-                .onFailure { showError("待办状态更新失败，请重试") }
+                .onFailure { showOperationError("待办状态更新失败，请重试", it) }
         }
     }
 
     fun deleteTodo(id: Long) {
         viewModelScope.launch {
             runCatching { repository.deleteTodo(TodoFeatureId(id)) }
-                .onFailure { showError("待办删除失败，请重试") }
+                .onFailure { showOperationError("待办删除失败，请重试", it) }
         }
     }
 
@@ -132,23 +136,20 @@ class TodoViewModel(
         if (refreshJob?.isActive == true) return
         _isRefreshing.value = true
         refreshJob = viewModelScope.launch {
-            syncMutex.withLock {
-                try {
+            try {
+                syncMutex.withLock {
                     when (val result = reader.refresh()) {
-                        is TodoRefreshResult.Success -> {
-                            _syncSummary.value = TodoSyncSummary(
-                                importedCount = result.importedCount,
-                                automatic = false,
-                            )
-                        }
+                        is TodoRefreshResult.Success -> onSyncSuccess(result.importedCount, automatic = false)
                         TodoRefreshResult.SessionExpired -> showError("畅课登录状态已失效，请先重新登录")
                         TodoRefreshResult.Error -> showError("畅课待办刷新失败，请稍后重试")
                     }
-                } catch (_: Exception) {
-                    showError("畅课待办刷新失败，请稍后重试")
-                } finally {
-                    _isRefreshing.value = false
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                showError("畅课待办刷新失败，请稍后重试")
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
@@ -173,31 +174,62 @@ class TodoViewModel(
     private suspend fun runAutoSyncIfDue() {
         val coordinator = autoSyncCoordinator ?: return
         syncMutex.withLock {
-            when (val result = runCatching { coordinator.refreshIfDue() }.getOrNull()) {
-                is TodoAutoSyncResult.Completed -> _autoSyncMessage.value = when (result.result) {
-                    is LegacyTodoRefreshResult.Success -> {
-                        _syncSummary.value = TodoSyncSummary(
-                            importedCount = result.result.importedCount,
-                            automatic = true,
-                        )
-                        null
+            val result = try {
+                coordinator.refreshIfDue()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                return@withLock
+            }
+            when (result) {
+                is TodoAutoSyncResult.Completed -> when (val refreshResult = result.result) {
+                    is LegacyTodoRefreshResult.Success -> onSyncSuccess(refreshResult.importedCount, automatic = true)
+                    LegacyTodoRefreshResult.SessionExpired -> {
+                        _autoSyncMessage.value = "畅课待办登录状态已失效，请重新登录"
                     }
-                    LegacyTodoRefreshResult.SessionExpired -> "畅课待办登录状态已失效，请重新登录"
-                    LegacyTodoRefreshResult.Error -> "畅课待办自动刷新失败，已保留本地缓存"
+                    LegacyTodoRefreshResult.Error -> {
+                        _autoSyncMessage.value = "畅课待办自动刷新失败，已保留本地缓存"
+                    }
                 }
                 TodoAutoSyncResult.SkippedDisabled,
                 TodoAutoSyncResult.SkippedUnauthenticated,
                 TodoAutoSyncResult.SkippedThrottled,
-                null,
                 -> Unit
             }
         }
     }
 
+    private suspend fun onSyncSuccess(importedCount: Int, automatic: Boolean) {
+        reloadCourseOptions()
+        _syncSummary.value = TodoSyncSummary(importedCount, automatic)
+        _autoSyncMessage.value = null
+        // Network success cannot recover a failed local Todo subscription.
+        if (!todoReadFailed) {
+            _state.update { current ->
+                if (current is TodoState.Error) {
+                    if (current.todos.isEmpty()) TodoState.Empty(courseOptions)
+                    else TodoState.Success(current.todos, courseOptions)
+                } else {
+                    current
+                }
+            }
+        }
+    }
+
     fun refreshCourseOptions() {
-        viewModelScope.launch {
-            runCatching { repository.getCourseOptions() }
-                .onSuccess { courseOptions = it; refreshWithOptions() }
+        viewModelScope.launch { reloadCourseOptions() }
+    }
+
+    private suspend fun reloadCourseOptions() {
+        courseOptionsMutex.withLock {
+            try {
+                courseOptions = repository.getCourseOptions()
+                refreshWithOptions()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Keep the last directory; a directory failure must not stop Todo observation.
+            }
         }
     }
 
@@ -212,7 +244,13 @@ class TodoViewModel(
         }
     }
 
+    private fun showOperationError(message: String, error: Throwable) {
+        if (error is CancellationException) throw error
+        showError(message)
+    }
+
     private fun showError(message: String) {
+        if (todoReadFailed) return
         _state.value = TodoState.Error(message, currentTodos(), courseOptions)
     }
 

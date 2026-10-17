@@ -3,10 +3,10 @@ package com.xmu.course.ui.todo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -39,21 +38,21 @@ import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppShapes
 import com.xmu.course.ui.theme.AppSpacing
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -204,7 +203,7 @@ private fun TodoScreenContent(
                     if (isRefreshing) {
                         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.heightIn(max = 22.dp))
                     } else {
-                        Icon(Icons.Filled.Refresh, contentDescription = "刷新畅课待办")
+                        Icon(Icons.Filled.Refresh, contentDescription = "刷新畅课待办", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 },
@@ -214,6 +213,9 @@ private fun TodoScreenContent(
             FloatingActionButton(
                 onClick = { editorTodo = null; showEditor = true },
                 modifier = Modifier.tutorialTarget(TutorialTargetKey.TODO_ADD),
+                shape = AppShapes.Card,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "新增待办")
             }
@@ -307,6 +309,7 @@ private fun LoadingContent(innerPadding: PaddingValues) {
     ) { AppLoadingState() }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TodoListContent(
     innerPadding: PaddingValues,
@@ -341,21 +344,31 @@ private fun TodoListContent(
             start = AppSpacing.PagePadding,
             top = AppSpacing.PagePadding,
             end = AppSpacing.PagePadding,
-            bottom = AppSpacing.PagePadding,
+            bottom = 88.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                maxItemsInEachRow = 3,
             ) {
                 TodoBucket.entries.forEach { bucket ->
                     FilterChip(
                         selected = selectedBucket == bucket,
                         onClick = { selectedBucket = bucket },
                         label = { Text(bucket.label) },
-                        modifier = Modifier.testTag("todo_filter_${bucket.name.lowercase()}"),
+                        shape = AppShapes.Button,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            selectedLabelColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .testTag("todo_filter_${bucket.name.lowercase()}"),
                     )
                 }
             }
@@ -419,11 +432,12 @@ private fun androidx.compose.foundation.lazy.LazyListScope.todoSection(
     item {
         Text(
             title,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(
-                start = AppSpacing.Lg + AppSpacing.Xs,
-                top = AppSpacing.Xl,
+                start = AppSpacing.Lg,
+                top = AppSpacing.Md,
                 bottom = AppSpacing.Sm,
             ),
         )
@@ -436,7 +450,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.todoSection(
             Column {
                 todos.forEachIndexed { index, todo ->
                     if (index > 0) {
-                        AppListDivider(inset = AppSpacing.Lg + 24.dp + AppSpacing.Md)
+                        AppListDivider(inset = AppSpacing.Lg + 48.dp + AppSpacing.Sm)
                     }
                     TodoItem(todo, courseOptions, nowMillis, onToggle, onEdit, onDelete)
                 }
@@ -497,7 +511,7 @@ private fun TodoItem(
                     .size(24.dp)
                     .clip(CircleShape)
                     .background(fillColor)
-                    .border(2.dp, ringColor, CircleShape),
+                    .border(1.5.dp, ringColor, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 if (todo.completed) {
@@ -510,7 +524,10 @@ private fun TodoItem(
                 }
             }
         }
-        Column(Modifier.weight(1f).padding(horizontal = AppSpacing.Md)) {
+        Column(
+            Modifier.weight(1f).padding(horizontal = AppSpacing.Sm),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        ) {
             Text(
                 todo.title,
                 style = MaterialTheme.typography.bodyLarge,
@@ -533,15 +550,14 @@ private fun TodoItem(
             val countdown =
                 if (todo.completed || deadlineDisplay.urgency == TodoUrgency.NORMAL) null else deadlineDisplay.text
             if (deadlineLine != null || countdown != null) {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                 ) {
                     deadlineLine?.let {
                         Text(
                             text = "截止 $it",
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -627,15 +643,21 @@ private fun TodoEditorDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var showCourseMenu by remember { mutableStateOf(false) }
 
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    )
     AlertDialog(
+        modifier = Modifier.imePadding(),
         onDismissRequest = onDismiss,
+        shape = AppShapes.Section,
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
         title = { Text(if (todo == null) "新增待办" else "编辑待办") },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp)
-                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .testTag("todo_editor_scroll_content"),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Md),
@@ -646,17 +668,25 @@ private fun TodoEditorDialog(
                     label = { Text("标题") },
                     singleLine = true,
                     isError = title.isBlank(),
-                    modifier = Modifier.testTag("todo_editor_title"),
+                    shape = AppShapes.Button,
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().testTag("todo_editor_title"),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("描述（可选）") },
                     minLines = 2,
-                    modifier = Modifier.testTag("todo_editor_description"),
+                    shape = AppShapes.Button,
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().testTag("todo_editor_description"),
                 )
                 Box {
-                    OutlinedButton(onClick = { showCourseMenu = true }) {
+                    OutlinedButton(
+                        onClick = { showCourseMenu = true },
+                        shape = AppShapes.Button,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
                         Text(selectedCourse?.let { "关联：${it.name}" } ?: "不关联课程")
                     }
                     DropdownMenu(
@@ -678,7 +708,8 @@ private fun TodoEditorDialog(
                 }
                 OutlinedButton(
                     onClick = { showDatePicker = true },
-                    modifier = Modifier.testTag("todo_editor_deadline"),
+                    shape = AppShapes.Button,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("todo_editor_deadline"),
                 ) {
                     val displayDeadline = deadline?.let {
                         TodoDatePolicy.effectiveDeadline(
@@ -702,7 +733,8 @@ private fun TodoEditorDialog(
             Button(
                 onClick = { onSave(title, description, deadline, selectedCourse) },
                 enabled = title.isNotBlank(),
-                modifier = Modifier.testTag("todo_editor_save"),
+                shape = AppShapes.Button,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("todo_editor_save"),
             ) { Text("保存") }
         },
         dismissButton = {

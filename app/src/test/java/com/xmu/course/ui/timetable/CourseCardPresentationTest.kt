@@ -27,9 +27,15 @@ class CourseCardPresentationTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun courseCardTextChoosesTheHigherContrastColor() {
-        assertEquals(Color(0xFF17202B), courseCardTextColor(Color(0xFFFDCF93)))
-        assertEquals(Color.White, courseCardTextColor(Color(0xFF202124)))
+    fun courseCardForegroundAdaptsToLightAndDarkColors() {
+        assertEquals(
+            Color(0xFF0B1117),
+            courseCardForegroundColor(Color(0xFFFDCF93)),
+        )
+        assertEquals(
+            Color.White,
+            courseCardForegroundColor(Color(0xFF1A5CAB)),
+        )
     }
 
     @Test

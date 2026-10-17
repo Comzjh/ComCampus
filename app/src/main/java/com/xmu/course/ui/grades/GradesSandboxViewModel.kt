@@ -240,7 +240,7 @@ class GradesSandboxViewModel(
                 },
             )
         }
-        val gpaText = state.seed.usableGpaText
+        val gpaText = state.seed.usableCalculationGpaText
         if (gpaText == null) {
             throw IllegalArgumentException(
                 if (state.seed.gpaNeedsConfirmation) {

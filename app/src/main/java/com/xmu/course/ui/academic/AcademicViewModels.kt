@@ -76,7 +76,7 @@ class AcademicHomeViewModel(
             planFetchedAtText = snapshot?.fetchedAtEpochMillis?.let(::formatAcademicRefreshTime),
             gradeRefreshedAtText = grade?.let { formatAcademicRefreshTime(it.refreshedAtEpochMillis) },
             policy = policy,
-            simlatableCourseCount = snapshot?.enrolledCourses?.count { snapshot.effectiveCreditsText(it) != null } ?: 0,
+            simlatableCourseCount = AcademicSimulationSeedBuilder.build(snapshot, grade, policy).simlatableCourses.size,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AcademicHomeUiState())
 }

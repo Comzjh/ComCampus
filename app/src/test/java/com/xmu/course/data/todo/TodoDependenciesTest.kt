@@ -51,6 +51,32 @@ class TodoDependenciesTest {
         assertEquals(1, refresh.calls)
     }
 
+    @Test
+    fun `manual page refresh records success and prevents immediate automatic duplicate`() = runTest {
+        val refresh = FakeRefresh()
+        val settings = FakeSettings()
+        val dependencies = TodoDependencies(
+            FakeRepository(), refresh,
+            TodoAutoSyncCoordinator(refresh, settings, now = { 10_000L }),
+        )
+
+        assertEquals(com.xmu.course.contracts.todo.TodoRefreshResult.Success(3), dependencies.refreshReader.refresh())
+        assertEquals(TodoAutoSyncResult.SkippedThrottled, dependencies.autoSyncCoordinator.refreshIfDue())
+        assertEquals(1, refresh.calls)
+    }
+
+    @Test
+    fun `manual page refresh respects the session gate`() = runTest {
+        val refresh = FakeRefresh()
+        val dependencies = TodoDependencies(
+            FakeRepository(), refresh,
+            TodoAutoSyncCoordinator(refresh, FakeSettings(), isSessionAvailable = { false }),
+        )
+
+        assertEquals(com.xmu.course.contracts.todo.TodoRefreshResult.SessionExpired, dependencies.refreshReader.refresh())
+        assertEquals(0, refresh.calls)
+    }
+
     private class FakeRefresh : TodoRefreshCoordinator {
         var calls = 0
 

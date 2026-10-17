@@ -3,8 +3,6 @@ package com.xmu.course.ui.timetable
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,43 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
@@ -66,16 +35,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xmu.course.data.TimetableAxisStyle
 import com.xmu.course.ui.tutorial.TutorialTargetKey
 import com.xmu.course.ui.tutorial.tutorialTarget
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.TimetableConfig
-import com.xmu.course.ui.background.TimetableBackground
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
@@ -185,7 +149,7 @@ internal fun TimetableWeekGrid(
                 }
             }
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.60f),
             )
 
             Box(
@@ -205,7 +169,7 @@ internal fun TimetableWeekGrid(
                             .width(timeAxisWidth)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = TIMETABLE_HEADER_OVERLAY_ALPHA)),
                     ) {
-                        val axisLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
+                        val axisLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
                         repeat(sectionCount) { index ->
                             Box(
                                 Modifier
@@ -217,7 +181,7 @@ internal fun TimetableWeekGrid(
                                                 color = axisLineColor,
                                                 start = Offset(0f, size.height),
                                                 end = Offset(size.width, size.height),
-                                                strokeWidth = 1.dp.toPx(),
+                                                strokeWidth = 0.5.dp.toPx(),
                                             )
                                         }
                                     },
@@ -231,7 +195,7 @@ internal fun TimetableWeekGrid(
                                         text = "${index + 1}",
                                         fontSize = axisTypography.numberSizeSp.sp,
                                         lineHeight = axisTypography.numberLineHeightSp.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = axisTextColor(
                                             axisStyle.periodColor,
                                             MaterialTheme.colorScheme.onSurface,
@@ -271,10 +235,10 @@ internal fun TimetableWeekGrid(
                             .height(cellHeight * sectionCount),
                     ) {
                         if (showGrid) {
-                            val horizontalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)
-                            val verticalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)
+                            val horizontalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
+                            val verticalLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)
                             Canvas(Modifier.fillMaxSize()) {
-                                val strokeWidth = 1.dp.toPx()
+                                val strokeWidth = 0.5.dp.toPx()
                                 for (index in 1..sectionCount) {
                                     val y = cellHeight.toPx() * index
                                     drawLine(
@@ -392,7 +356,7 @@ private fun DayColumn(
         if (showGrid) {
             val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)
             Canvas(Modifier.matchParentSize()) {
-                val strokeWidth = 1.dp.toPx()
+                val strokeWidth = 0.5.dp.toPx()
                 val rowHeight = cellHeight.toPx()
                 // 横向节次线（1..sectionCount），与课程 y=(start-1)*cellHeight 对齐。
                 for (index in 1..layoutConfig.sectionCount) {

@@ -1,6 +1,7 @@
 package com.xmu.course.ui.widget
 
 import android.content.Context
+import com.xmu.course.data.widget.WidgetDataSource
 import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,9 +43,12 @@ class NextCourseWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = WidgetRepository.loadToday(context)
-        val next = WidgetRepository.findNextCourse(data.courses, data.nowMinuteOfDay)
+        val updates = widgetDataUpdates(WidgetDataSource.from(context)) { WidgetRepository.loadToday(context) }
         provideContent {
-            NextCourseContent(next, data.nowMinuteOfDay)
+            LiveWidgetData(data, updates) { current ->
+                val next = WidgetRepository.findNextCourse(current.courses, current.nowMinuteOfDay)
+                NextCourseContent(next, current.nowMinuteOfDay)
+            }
         }
     }
 }
@@ -53,10 +57,22 @@ class NextCourseWidgetReceiver : GlanceAppWidgetReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_MINUTE_TICK) {
+            val pending = goAsync()
             CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-                WidgetUpdater.updateAll(context)
+                try {
+                    kotlinx.coroutines.withTimeout(8_000L) { WidgetUpdater.updateAll(context) }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    if (cancelled !is kotlinx.coroutines.TimeoutCancellationException) throw cancelled
+                } catch (_: Exception) {
+                    // Keep the next clock update scheduled after a transient host failure.
+                } finally {
+                    try {
+                        WidgetUpdater.scheduleMinuteRefresh(context)
+                    } finally {
+                        pending?.finish()
+                    }
+                }
             }
-            WidgetUpdater.scheduleMinuteRefresh(context)
         }
     }
 

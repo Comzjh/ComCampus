@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material3.Button
@@ -47,25 +48,26 @@ fun AppEmptyState(
         if (!compact) Box(
             modifier = Modifier
                 .size(64.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp),
             )
         }
         Text(
             title,
             style = MaterialTheme.typography.titleMedium,
+            textAlign = if (compact) TextAlign.Start else TextAlign.Center,
             modifier = Modifier.padding(top = if (compact) AppSpacing.Xs else AppSpacing.Lg),
         )
         if (description != null) {
             Text(
                 description,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = if (compact) TextAlign.Start else TextAlign.Center,
                 modifier = Modifier.padding(
@@ -77,11 +79,11 @@ fun AppEmptyState(
         }
         if (actionLabel != null && onAction != null) {
             if (primaryAction) {
-                Button(onClick = onAction, modifier = Modifier.padding(top = AppSpacing.Md)) {
+                Button(onClick = onAction, modifier = Modifier.padding(top = AppSpacing.Lg).heightIn(min = 48.dp)) {
                     Text(actionLabel)
                 }
             } else {
-                FilledTonalButton(onClick = onAction, modifier = Modifier.padding(top = AppSpacing.Md)) {
+                FilledTonalButton(onClick = onAction, modifier = Modifier.padding(top = AppSpacing.Lg).heightIn(min = 48.dp)) {
                     Text(actionLabel)
                 }
             }

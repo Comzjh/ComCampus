@@ -44,6 +44,14 @@ object TimetableCalendar {
     fun currentWeek(timetable: Timetable, today: LocalDate = LocalDate.now()): Int =
         currentWeek(timetable.startDate, today).coerceIn(1, timetable.totalWeeks.coerceAtLeast(1))
 
+    /** Browsing stays bounded; date-specific reminders must also be in the semester. */
+    fun isWithinSemester(timetable: Timetable?, today: LocalDate): Boolean {
+        val start = timetable?.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: return true // Keep existing week-based behavior when no valid start date is set.
+        val elapsedDays = ChronoUnit.DAYS.between(start, today)
+        return elapsedDays >= 0 && elapsedDays < timetable.totalWeeks.coerceAtLeast(1) * 7L
+    }
+
     fun formatMonthDay(date: LocalDate?): String = date?.let { "${it.monthValue}/${it.dayOfMonth}" }.orEmpty()
 }
 

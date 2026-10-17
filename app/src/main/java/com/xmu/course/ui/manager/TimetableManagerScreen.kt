@@ -8,11 +8,12 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +28,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,7 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,12 +56,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xmu.course.XmuCourseApplication
 import com.xmu.course.contracts.TimetableSummary
 import com.xmu.course.ui.timetable.TimetableCalendar
+import com.xmu.course.ui.theme.AppShapes
+import com.xmu.course.ui.theme.AppSpacing
 import java.time.LocalDate
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.temporal.TemporalAdjusters
 
 /**
  * 课表管理页：列表 / 点击切换 / 长按重命名删除 / 新建。
@@ -80,6 +92,7 @@ fun TimetableManagerScreen(
     var manageTarget by remember { mutableStateOf<TimetableSummary?>(null) }
     var renameTarget by remember { mutableStateOf<TimetableSummary?>(null) }
     var deleteTarget by remember { mutableStateOf<TimetableSummary?>(null) }
+    var startDateTarget by remember { mutableStateOf<TimetableSummary?>(null) }
 
     // 操作结果提示。
     LaunchedEffect(state.message) {
@@ -106,7 +119,12 @@ fun TimetableManagerScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(
+                onClick = { showCreateDialog = true },
+                shape = AppShapes.Card,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "创建新课表")
             }
         },
@@ -116,23 +134,32 @@ fun TimetableManagerScreen(
                 Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("还没有课表\n点击右下角 + 创建", textAlign = TextAlign.Center)
+                Text(
+                    "还没有课表\n点击右下角 + 创建",
+                    modifier = Modifier.padding(AppSpacing.PagePadding),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         } else {
-            Column(Modifier.padding(innerPadding).padding(horizontal = 12.dp)) {
+            Column(Modifier.padding(innerPadding).padding(horizontal = AppSpacing.PagePadding)) {
                 Text(
                     if (state.timetables.size > 1) {
                         "点击切换当前课表；长按可重命名或删除"
                     } else {
                         "长按课表可重命名或删除"
                     },
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
-                        .padding(vertical = 8.dp)
+                        .padding(top = AppSpacing.Sm, bottom = AppSpacing.Lg)
                         .testTag("timetable_management_hint"),
                 )
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Md),
+                    contentPadding = PaddingValues(bottom = 88.dp),
+                ) {
                     items(state.timetables, key = { it.timetable.id }) { item ->
                         TimetableCard(
                             item = item,
@@ -140,11 +167,24 @@ fun TimetableManagerScreen(
                             today = today,
                             onClick = { viewModel.select(item.timetable.id) },
                             onLongClick = { manageTarget = item },
+                            onSetStartDate = { startDateTarget = item },
                         )
                     }
                 }
             }
         }
+    }
+
+    startDateTarget?.let { target ->
+        TimetableStartDatePickerDialog(
+            startDate = target.timetable.startDate,
+            today = today,
+            onDismissRequest = { startDateTarget = null },
+            onConfirm = { date ->
+                viewModel.setStartDate(target.timetable.id, date)
+                startDateTarget = null
+            },
+        )
     }
 
     // ---- 新建 ----
@@ -272,30 +312,34 @@ private fun TimetableCard(
     today: LocalDate,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onSetStartDate: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .testTag("timetable_card_${item.timetable.id}"),
-        border = if (isCurrent) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        shape = AppShapes.Card,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = if (isCurrent) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)) else null,
     ) {
         Row(
-            Modifier.padding(16.dp),
+            Modifier.padding(AppSpacing.CardPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 Modifier
-                    .size(24.dp)
+                    .size(12.dp)
                     .clip(CircleShape)
                     .background(
                         item.timetable.color?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
                             ?: MaterialTheme.colorScheme.primary,
                     ),
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(item.timetable.name, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.width(AppSpacing.Md))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
+                Text(item.timetable.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
                     "第 ${TimetableCalendar.currentWeek(item.timetable, today)} 周 · " +
                         (item.timetable.startDate?.let { "开学 $it" } ?: "开学日期未设置"),
@@ -307,14 +351,84 @@ private fun TimetableCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (item.isCustom) {
+                    TextButton(
+                        onClick = onSetStartDate,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("timetable_start_date_${item.timetable.id}"),
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                    ) {
+                        Text(if (item.timetable.startDate.isNullOrBlank()) "设置开学日期" else "修改开学日期")
+                    }
+                }
             }
             if (isCurrent) {
+                Spacer(Modifier.width(AppSpacing.Sm))
                 Icon(
                     Icons.Filled.CheckCircle,
                     contentDescription = "当前使用",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
+        }
+    }
+}
+
+/** DatePicker 的毫秒值始终表示 UTC 日期，不随设备时区改变。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TimetableStartDatePickerDialog(
+    startDate: String?,
+    today: LocalDate,
+    onDismissRequest: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    val initialDate = remember(startDate, today) {
+        startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+    val initialMillis = remember(initialDate) {
+        initialDate.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+    }
+    val pickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        initialDisplayedMonthMillis = initialMillis,
+        yearRange = minOf(1900, initialDate.year)..maxOf(2100, initialDate.year),
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    pickerState.selectedDateMillis?.let { selected ->
+                        onConfirm(Instant.ofEpochMilli(selected).atZone(ZoneOffset.UTC).toLocalDate().toString())
+                    }
+                },
+                enabled = pickerState.selectedDateMillis != null,
+                modifier = Modifier.testTag("timetable_start_date_save"),
+            ) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.testTag("timetable_start_date_cancel"),
+            ) { Text("取消") }
+        },
+    ) {
+        Column {
+            Text(
+                "选择第1周周一，用于本周定位和课前提醒",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            )
+            DatePicker(
+                state = pickerState,
+                title = {
+                    Text("开学日期", modifier = Modifier.padding(start = 24.dp, top = 16.dp))
+                },
+            )
         }
     }
 }

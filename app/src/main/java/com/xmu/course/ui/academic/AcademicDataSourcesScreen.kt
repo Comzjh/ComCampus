@@ -19,12 +19,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xmu.course.ui.components.AppNavigationRow
 import com.xmu.course.ui.components.AppGroupedSection
@@ -81,7 +82,7 @@ private fun AcademicDataSourcesScreenContent(
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(AppSpacing.PagePadding),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.SectionGap),
         ) {
             AppSectionCard(title = "学业数据", modifier = Modifier.testTag("datasources_academic_card")) {
                 val statusText = when {
@@ -89,7 +90,12 @@ private fun AcademicDataSourcesScreenContent(
                     state.hasAnyData -> "已保存到本机"
                     else -> "尚未刷新"
                 }
-                Text(statusText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("datasources_status"))
+                Text(
+                    statusText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = AppSpacing.Xs).testTag("datasources_status"),
+                )
                 state.gradeRefreshedAtText?.let { refreshedAt ->
                     Text(
                         "成绩上次刷新 $refreshedAt",
@@ -141,17 +147,20 @@ private fun AcademicDataSourcesScreenContent(
                         modifier = Modifier.testTag("datasources_plan_fetch_time"),
                     )
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 DatasourcesStatRow(
                     label = "历史成绩",
                     value = if (state.gradeSynced) "${state.gradeCourseCount} 门课程" else if (state.gradeStorageFailed) "读取失败" else "尚未刷新",
                     tag = "datasources_grade_row",
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 DatasourcesStatRow(
                     label = "本学期在修",
                     value = "${state.enrolledCount} 门",
                     tag = "datasources_enrolled_row",
                 )
                 if (state.pendingManualCount > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     DatasourcesStatRow(
                         label = "学分待确认",
                         value = "${state.pendingManualCount} 门",
@@ -213,19 +222,20 @@ private fun DatasourcesStatRow(label: String, value: String, tag: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppSpacing.Xxs)
+            .padding(vertical = AppSpacing.Sm)
             .testTag(tag),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

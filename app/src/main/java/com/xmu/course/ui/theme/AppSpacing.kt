@@ -5,7 +5,7 @@ import androidx.compose.ui.unit.dp
 /**
  * 统一间距规格：页面与组件应引用这里，而不是散落的硬编码 dp 值。
  *
- * 基准栅格为 4dp，页面标准外边距 16dp（对应审计结论中的主流值）。
+ * 基准栅格为 4dp，页面标准外边距 20dp（对应审计结论中的主流值）。
  */
 object AppSpacing {
     val Xxs = 2.dp
@@ -18,7 +18,7 @@ object AppSpacing {
     val Xxxl = 32.dp
 
     /** 页面内容外边距。 */
-    val PagePadding = Lg
+    val PagePadding = Xl
 
     /** 卡片内边距。 */
     val CardPadding = Lg

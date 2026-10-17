@@ -1,6 +1,7 @@
 package com.xmu.course.ui.widget
 
 import android.content.Context
+import com.xmu.course.data.widget.WidgetDataSource
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -40,8 +41,9 @@ class TodayCourseWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = WidgetRepository.loadToday(context)
+        val updates = widgetDataUpdates(WidgetDataSource.from(context)) { WidgetRepository.loadToday(context) }
         provideContent {
-            TodayCourseContent(data)
+            LiveWidgetData(data, updates) { TodayCourseContent(it) }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.xmu.course.data
 
 import android.util.Log
+import androidx.room.withTransaction
 import com.xmu.course.data.local.AppDatabase
 import com.xmu.course.data.local.SemesterEntity
 import com.xmu.course.data.local.TimetableConfigEntity
@@ -139,6 +140,13 @@ class TimetableRepository(private val db: AppDatabase) :
 
     /** 课表设置页统一入口：整份保存。 */
     suspend fun updateConfig(config: TimetableConfig) = saveConfig(config)
+
+    /** Merge an edit with the latest saved configuration, including pending edits. */
+    suspend fun updateConfig(timetableId: Long, transform: (TimetableConfig) -> TimetableConfig) {
+        db.withTransaction {
+            saveConfig(transform(getConfig(timetableId)))
+        }
+    }
 
     /** 更新单张课表背景（其他字段保持不变）。 */
     suspend fun updateBackground(config: TimetableConfig) = saveConfig(config)

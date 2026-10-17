@@ -1,14 +1,15 @@
 package com.xmu.course
 
 import android.app.Application
-import android.app.ActivityManager
 import android.content.res.Configuration
+import com.xmu.course.ui.reminder.CourseReminderScheduler
+import android.app.ActivityManager
 import android.os.Build
 import android.os.Process
 import android.webkit.WebView
 import com.xmu.course.di.AppContainer
-import com.xmu.course.ui.widget.TodoWidgetSyncWork
 import com.xmu.course.ui.widget.WidgetUpdater
+import com.xmu.course.ui.widget.TodoWidgetSyncWork
 
 /** 应用进程入口：启动 Widget 数据监听。 */
 class XmuCourseApplication : Application() {
@@ -28,13 +29,15 @@ class XmuCourseApplication : Application() {
         if (!isTronClassAuthProcess && !Build.FINGERPRINT.contains("robolectric", ignoreCase = true)) {
             WidgetUpdater.start(this)
             TodoWidgetSyncWork.scheduleHourly(this)
+            CourseReminderScheduler.start(this)
         }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        val isTronClassAuthProcess = currentProcessName()?.endsWith(":tronclass_auth") == true
-        if (!isTronClassAuthProcess && !Build.FINGERPRINT.contains("robolectric", ignoreCase = true)) {
+        if (currentProcessName()?.endsWith(":tronclass_auth") != true &&
+            !Build.FINGERPRINT.contains("robolectric", ignoreCase = true)
+        ) {
             WidgetUpdater.refreshForConfigurationChange(this)
         }
     }

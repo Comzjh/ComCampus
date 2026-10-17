@@ -112,7 +112,9 @@ object WidgetRepository {
             timetableName = timetable?.name ?: "ComCampus",
             week = week,
             dayOfWeek = day,
-            courses = filterTodayCourses(courses, skipped, week, day),
+            courses = if (TimetableCalendar.isWithinSemester(timetable, today)) {
+                filterTodayCourses(courses, skipped, week, day)
+            } else emptyList(),
             nowMinuteOfDay = now.hour * 60 + now.minute,
         )
     }

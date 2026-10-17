@@ -23,11 +23,11 @@ import java.time.LocalDate
 /**
  * 当前周选择器测试：
  * - actualWeek 计算与 viewWeek 解析（resolveViewWeek 纯函数）；
- * - viewWeek 按课表持久化（TimetablePrefs）；
+ * - viewWeek 在同一次前台会话内按课表保留；
  * - 课程按查看周过滤（LayoutEngine）。
  *
- * 说明：VM 直连 Room 的 Robolectric 测试存在 "Illegal connection pointer"
- * 线程检查限制，故将切换逻辑提取为可测纯函数后在此覆盖。
+ * 此处验证纯计算；冷启动与前后台会话在 TimetableWeekSessionTest 覆盖，
+ * 真实 Pager 同步在 TimetableWeekReturnScreenTest 覆盖。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -73,7 +73,7 @@ class WeekSelectorTest {
             3,
             TimetableViewModel.resolveViewWeek(
                 previousTimetableId = null, previousViewWeek = 1,
-                timetableId = 1L, savedViewWeek = null,
+                timetableId = 1L, sessionViewWeek = null,
                 actualWeek = 3, totalWeeks = 25,
             ),
         )
@@ -87,7 +87,7 @@ class WeekSelectorTest {
             10,
             TimetableViewModel.resolveViewWeek(
                 previousTimetableId = 1L, previousViewWeek = saved,
-                timetableId = 1L, savedViewWeek = saved,
+                timetableId = 1L, sessionViewWeek = saved,
                 actualWeek = 3, totalWeeks = 25,
             ),
         )
@@ -101,44 +101,42 @@ class WeekSelectorTest {
             10,
             TimetableViewModel.resolveViewWeek(
                 previousTimetableId = 1L, previousViewWeek = 10,
-                timetableId = 1L, savedViewWeek = null,
+                timetableId = 1L, sessionViewWeek = null,
                 actualWeek = 3, totalWeeks = 25,
             ),
         )
     }
 
     @Test fun `切换课表viewWeek各自独立`() {
-        // A 保存第10周；B 未保存 → 切到 B 回到 B 的 actualWeek；切回 A 恢复第10周。
-        TimetablePrefs.setViewWeek(context, 1L, 10)
-        assertEquals(10, TimetablePrefs.getViewWeek(context, 1L))
-        assertEquals(null, TimetablePrefs.getViewWeek(context, 2L))
+        // 同一次前台会话：A 浏览第10周；首次看 B 使用实际周；切回 A 保留第10周。
+        val sessionWeeks = mapOf(1L to 10)
 
-        // 切到 B：saved=null → actualWeek=1
+        // 切到 B：会话内没有浏览记录 → actualWeek=1
         assertEquals(
             1,
             TimetableViewModel.resolveViewWeek(
                 previousTimetableId = 1L, previousViewWeek = 10,
-                timetableId = 2L, savedViewWeek = TimetablePrefs.getViewWeek(context, 2L),
+                timetableId = 2L, sessionViewWeek = sessionWeeks[2L],
                 actualWeek = 1, totalWeeks = 25,
             ),
         )
-        // 切回 A：恢复保存的第10周
+        // 切回 A：保留本次会话浏览过的第10周
         assertEquals(
             10,
             TimetableViewModel.resolveViewWeek(
                 previousTimetableId = 2L, previousViewWeek = 1,
-                timetableId = 1L, savedViewWeek = TimetablePrefs.getViewWeek(context, 1L),
+                timetableId = 1L, sessionViewWeek = sessionWeeks[1L],
                 actualWeek = 3, totalWeeks = 25,
             ),
         )
     }
 
-    @Test fun `viewWeek越界回退到totalWeeks范围`() {
+    @Test fun `会话内viewWeek越界回退到totalWeeks范围`() {
         assertEquals(
             25,
             TimetableViewModel.resolveViewWeek(
-                previousTimetableId = null, previousViewWeek = 1,
-                timetableId = 1L, savedViewWeek = 99,
+                previousTimetableId = 2L, previousViewWeek = 1,
+                timetableId = 1L, sessionViewWeek = 99,
                 actualWeek = 3, totalWeeks = 25,
             ),
         )

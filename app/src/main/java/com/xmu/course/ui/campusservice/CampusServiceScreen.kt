@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,6 +31,7 @@ import com.xmu.course.contracts.campusservice.CampusServiceDescriptor
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppNavigationRow
 import com.xmu.course.ui.components.AppGroupedSection
+import com.xmu.course.ui.components.AppListDivider
 import com.xmu.course.ui.theme.AppSpacing
 
 /** displayKey 到 UI 文案的稳定映射；文案归 UI 层，Adapter 不返回展示字符串。 */
@@ -109,9 +109,7 @@ fun CampusServiceScreen(
                 ) {
                     viewModel.services.forEachIndexed { index, service ->
                         if (index > 0) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                            )
+                            AppListDivider()
                         }
                         CampusServiceRow(
                             service = service,

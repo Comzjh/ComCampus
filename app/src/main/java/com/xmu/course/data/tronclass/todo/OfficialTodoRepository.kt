@@ -13,8 +13,11 @@ import com.xmu.course.data.todo.TodoDao
 import com.xmu.course.data.todo.model.TodoEntity
 import com.xmu.course.data.todo.model.TodoSource
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface OfficialTodoRepositoryContract {
     suspend fun syncExamTodos(): TronResult<Int>
@@ -32,12 +35,20 @@ class OfficialTodoRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) : OfficialTodoRepositoryContract {
 
-    override suspend fun syncExamTodos(): TronResult<Int> = withContext(Dispatchers.IO) {
-        syncOnIo()
+    private val syncMutex = Mutex()
+
+    override suspend fun syncExamTodos(): TronResult<Int> = syncMutex.withLock {
+        // Serialize the complete remote read and local commit, not just the transaction.
+        withContext(Dispatchers.IO) {
+            syncOnIo()
+        }
     }
 
     private suspend fun syncOnIo(): TronResult<Int> {
-        val session = runCatching { sessionProvider.getSession() }.getOrNull()
+        val session = runCatching { sessionProvider.getSession() }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            null
+        }
             ?: return TronResult.Error(TronClassError.SessionMissing)
         if (session.isExpired(clock())) {
             return TronResult.Error(TronClassError.SessionMissing)
@@ -45,6 +56,8 @@ class OfficialTodoRepository(
 
         val semestersResponse = try {
             api.getMySemesters()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: IOException) {
             return TronResult.Error(TronClassError.NetworkError)
         } catch (_: Exception) {
@@ -65,6 +78,8 @@ class OfficialTodoRepository(
 
         val coursesResponse = try {
             api.getMyCourses()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: IOException) {
             return TronResult.Error(TronClassError.NetworkError)
         } catch (_: Exception) {
@@ -86,6 +101,8 @@ class OfficialTodoRepository(
 
         val todosResponse = try {
             api.getOfficialTodos()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: IOException) {
             return TronResult.Error(TronClassError.NetworkError)
         } catch (_: Exception) {
@@ -123,8 +140,16 @@ class OfficialTodoRepository(
                 }
                 val baseline = metadataDao.get()?.importBaselineAt
                     ?: error("TronClass import baseline was not persisted")
+                // Read inside this transaction so updates and first-import filtering agree.
+                val existingExternalIds = todoDao.getAll().asSequence()
+                    .filter { it.source == TodoSource.TRONCLASS.name }
+                    .mapNotNull { it.externalId }
+                    .toSet()
                 val todos = currentSemesterCandidates
-                    .filter { it.deadline == null || it.deadline >= baseline }
+                    .filter {
+                        "exam:${it.remoteId}" in existingExternalIds ||
+                            it.deadline == null || it.deadline >= baseline
+                    }
                     .map { candidate ->
                         TodoEntity(
                             title = candidate.title,
@@ -138,12 +163,25 @@ class OfficialTodoRepository(
                         )
                     }
                 if (baselineWasCreated) {
-                    todoDao.deleteTronClassTodosBefore(TodoSource.TRONCLASS.name, baseline)
+                    // A first exam refresh must not erase homework awaiting its own endpoint.
+                    val incomingIds = todos.mapNotNullTo(mutableSetOf()) { it.externalId }
+                    val preservedIds = existingExternalIds.filter { !it.startsWith("exam:") || it in incomingIds }
+                    if (preservedIds.isEmpty()) {
+                        todoDao.deleteTronClassTodosBefore(TodoSource.TRONCLASS.name, baseline)
+                    } else {
+                        // Do not delete a row being updated: upsert must retain its local state.
+                        todoDao.deleteTronClassTodosBeforeExceptExternalIds(
+                            TodoSource.TRONCLASS.name, baseline, preservedIds,
+                        )
+                    }
                 }
                 // 不根据本次缺失项删除旧数据；官方列表的完整权威语义尚未承诺。
                 todoDao.upsertExternalTodos(todos)
                 TronResult.Success(todos.size)
             }
-        }.getOrElse { TronResult.Error(TronClassError.StorageError) }
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            TronResult.Error(TronClassError.StorageError)
+        }
     }
 }

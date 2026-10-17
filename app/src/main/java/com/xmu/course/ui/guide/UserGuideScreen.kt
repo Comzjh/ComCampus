@@ -18,13 +18,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.xmu.course.ui.theme.AppShapes
 
 /**
  * UX-11 / E1-E2：完整功能指南。
@@ -83,26 +84,20 @@ fun UserGuideScreen(
             modifier = Modifier.padding(padding).testTag("guide_list"),
         ) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                ) {
-                    Column(Modifier.padding(20.dp)) {
-                        Text("ComCampus", style = MaterialTheme.typography.headlineSmall)
-                        Text(
-                            "从课表到学业，按章节找到你需要的操作。",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                        Text(
-                            "每章开头的「分步教程」会在对应页面高亮真实控件，跟着点即可。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp)) {
+                    Text("ComCampus", style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        "从课表到学业，按章节找到你需要的操作。",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    Text(
+                        "每章开头的「分步教程」会在对应页面高亮真实控件，跟着点即可。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
                 }
             }
             item {
@@ -147,25 +142,22 @@ private fun GuideSectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("guide_section_" + section.id),
+        shape = AppShapes.Card,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = if (highlighted) {
-            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
         } else {
             null
         },
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
+                Text(
+                    text = "$index",
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    Text(
-                        text = "$index",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    )
-                }
+                )
                 Text(
                     section.title,
                     style = MaterialTheme.typography.titleLarge,
@@ -182,20 +174,18 @@ private fun GuideSectionCard(
                 Text(
                     "${stepIndex + 1}. $step",
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            ) {
-                Text(
-                    "提示：${section.tip}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(10.dp),
-                )
-            }
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            )
+            Text(
+                "提示：${section.tip}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

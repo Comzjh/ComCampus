@@ -63,7 +63,7 @@ class TodoRepository(
     override suspend fun updateTodo(command: UpdateTodoCommand) {
         require(command.title.isNotBlank()) { "待办标题不能为空" }
         val existing = todoDao.getById(command.id) ?: return
-        todoDao.update(TodoUpdateMapper.applyTo(existing, command, updatedTime = clock()))
+        todoDao.updateEditableFields(TodoUpdateMapper.applyTo(existing, command, updatedTime = clock()).editableFields())
     }
 
     override suspend fun setCompleted(id: Long, completed: Boolean) {

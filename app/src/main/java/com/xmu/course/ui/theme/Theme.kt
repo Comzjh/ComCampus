@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 /**
  * ComCampus 全局主题。
@@ -39,9 +40,11 @@ fun XmuCourseTheme(
         colorScheme = colorScheme,
         typography = Typography,
         shapes = Shapes(
+            extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
             small = AppShapes.Button,
             medium = AppShapes.Card,
             large = AppShapes.Section,
+            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
         ),
         content = content,
     )

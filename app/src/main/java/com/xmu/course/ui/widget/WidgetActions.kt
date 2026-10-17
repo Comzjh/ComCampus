@@ -62,14 +62,9 @@ class OpenTodoAction : ActionCallback {
     }
 }
 
-/** Queue a session-aware manual refresh from the todo widget. */
+/** Uses the existing session-aware sync path; the widget never reads credentials. */
 class RefreshTodoWidgetAction : ActionCallback {
-
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters,
-    ) {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         TodoWidgetSyncWork.enqueueManualRefresh(context)
     }
 }

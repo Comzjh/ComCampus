@@ -1,6 +1,7 @@
 package com.xmu.course.domain.grades
 
 import java.math.BigDecimal
+import java.math.MathContext
 import java.math.RoundingMode
 
 /**
@@ -34,6 +35,8 @@ object JwDerivedGpa {
             val pointFreeCourses: Int,
             val excludedByPolicy: Int,
             val malformedCourses: Int,
+            /** Calculation input keeps precision; gpaText is only for display. */
+            val calculationGpaText: String = gpaText,
         ) : Result
 
         /** 存在方案外候选且策略未确认：用户裁决前不出任何结论。 */
@@ -85,6 +88,7 @@ object JwDerivedGpa {
             pointFreeCourses = pointFree,
             excludedByPolicy = excluded,
             malformedCourses = malformed,
+            calculationGpaText = weightedSum.divide(creditsTotal, MathContext.DECIMAL128).toPlainString(),
         )
     }
 

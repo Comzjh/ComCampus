@@ -9,6 +9,9 @@ import com.xmu.course.data.TimetablePrefs
 import com.xmu.course.contracts.TimetableManagementContract
 import com.xmu.course.contracts.TimetableSummary
 import com.xmu.course.di.AppContainer
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +32,7 @@ data class TimetableManagerUiState(
 class TimetableManagerViewModel(
     application: Application,
     private val repo: TimetableManagementContract,
+    private val saveStartDate: (suspend (Long, String) -> Unit)? = null,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(TimetableManagerUiState())
@@ -91,6 +95,35 @@ class TimetableManagerViewModel(
         }
     }
 
+    /** 仅为已存在的自建课表设置日期；导入课表仍由学期设置管理。 */
+    fun setStartDate(id: Long, date: String) {
+        viewModelScope.launch {
+            if (_uiState.value.timetables.none { it.timetable.id == id && it.isCustom }) {
+                _uiState.update { it.copy(message = "只能设置已有自建课表的开学日期") }
+                return@launch
+            }
+            val parsed = try {
+                LocalDate.parse(date)
+            } catch (_: DateTimeParseException) {
+                _uiState.update { it.copy(message = "请选择有效的开学日期") }
+                return@launch
+            }
+            val save = saveStartDate
+            if (save == null) {
+                _uiState.update { it.copy(message = "暂时无法保存开学日期，请稍后重试") }
+                return@launch
+            }
+            try {
+                save(id, parsed.toString())
+                _uiState.update { it.copy(message = "开学日期已更新") }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _uiState.update { it.copy(message = "开学日期保存失败，请重试") }
+            }
+        }
+    }
+
     fun messageShown() {
         _uiState.update { it.copy(message = null) }
     }
@@ -109,6 +142,7 @@ class TimetableManagerViewModelFactory(
         return TimetableManagerViewModel(
             application = application,
             repo = container.timetableRepository,
+            saveStartDate = container.timetableRepository::setStartDate,
         ) as T
     }
 }

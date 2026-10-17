@@ -29,6 +29,7 @@ private fun PreviewSurface(
 ) {
     MaterialTheme(
         colorScheme = if (dark) ComCampusDarkScheme else ComCampusLightScheme,
+        typography = com.xmu.course.ui.theme.Typography,
         shapes = androidx.compose.material3.Shapes(
             small = AppShapes.Button,
             medium = AppShapes.Card,

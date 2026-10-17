@@ -2,6 +2,10 @@ package com.xmu.course
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.xmu.course.ui.reminder.CourseReminderScheduler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -43,6 +47,13 @@ class MainActivity : ComponentActivity() {
                     onInitialTodoConsumed = { openTodoFromWidget = false },
                 )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!Build.FINGERPRINT.contains("robolectric", ignoreCase = true)) {
+            lifecycleScope.launch { CourseReminderScheduler.reschedule(applicationContext) }
         }
     }
 

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import com.xmu.course.ui.theme.AppSpacing
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,7 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -107,7 +109,8 @@ fun TimetableSettingsScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = AppSpacing.PagePadding)
+                    .padding(bottom = AppSpacing.Xxl),
             ) {
                 // ---- 显示设置 ----
                 Card(
@@ -135,7 +138,7 @@ fun TimetableSettingsScreen(
 
                 // ---- 信息显示 ----
                 Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.Lg),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
@@ -159,7 +162,7 @@ fun TimetableSettingsScreen(
 
                 // ---- 文字设置 ----
                 Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.Lg),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
@@ -199,7 +202,7 @@ fun TimetableSettingsScreen(
                 // ---- 课表文字（Phase 9.1 全局显示偏好；Phase 11 扩展星期栏/日期栏独立字号与颜色） ----
                 TimetableAxisSettingsSection(
                     axisStyle = axisStyle,
-                    modifier = Modifier.padding(top = 12.dp),
+                    modifier = Modifier.padding(top = AppSpacing.Lg),
                     onPeriodFontChange = { TimetablePrefs.setAxisPeriodFontSp(axisContext, it) },
                     onTimeFontChange = { TimetablePrefs.setAxisTimeFontSp(axisContext, it) },
                     onDateFontChange = { TimetablePrefs.setAxisDateFontSp(axisContext, it) },
@@ -212,7 +215,7 @@ fun TimetableSettingsScreen(
 
                 // ---- 外观 ----
                 Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.Lg),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
@@ -343,7 +346,7 @@ private fun ConfigSlider(
     Column(Modifier.padding(vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, Modifier.weight(1f))
-            Text(valueText(local), style = MaterialTheme.typography.bodySmall)
+            Text(valueText(local), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         Slider(
             value = local.coerceIn(min, max),
@@ -378,7 +381,8 @@ private fun ConfigSwitch(title: String, checked: Boolean, onChange: (Boolean) ->
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .heightIn(min = 52.dp)
+            .padding(vertical = AppSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, Modifier.weight(1f))

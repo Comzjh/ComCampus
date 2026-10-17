@@ -7,9 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,7 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,7 +29,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -40,12 +37,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xmu.course.ui.components.AppGroupedSection
@@ -98,7 +93,7 @@ fun ImportScreen(
                 Button(onClick = viewModel::confirmOverwrite) { Text("覆盖") }
             },
             dismissButton = {
-                Button(onClick = viewModel::cancelOverwrite) { Text("取消") }
+                TextButton(onClick = viewModel::cancelOverwrite) { Text("取消") }
             },
         )
     }
@@ -207,25 +202,22 @@ internal fun ImportStartDatePickerDialog(
     errorMessage: String? = null,
     initialDisplayedMonthMillis: Long? = null,
 ) {
-    val uriHandler = LocalUriHandler.current
-    val datePickerState = remember {
-        DatePickerState(
-            locale = Locale.SIMPLIFIED_CHINESE,
+    ProvideSimplifiedChineseDatePickerLocale {
+        val uriHandler = LocalUriHandler.current
+        val datePickerState = androidx.compose.material3.rememberDatePickerState(
             initialSelectedDateMillis = DEFAULT_IMPORT_START_DATE_MILLIS,
             initialDisplayedMonthMillis = initialDisplayedMonthMillis ?: DEFAULT_IMPORT_START_DATE_MILLIS,
         )
-    }
-    DatePickerDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(datePickerState.selectedDateMillis) },
-                enabled = datePickerState.selectedDateMillis != null,
-            ) { Text("确认导入") }
-        },
-        dismissButton = { TextButton(onClick = onDismissRequest) { Text("取消") } },
-    ) {
-        ProvideSimplifiedChineseDatePickerLocale {
+        DatePickerDialog(
+            onDismissRequest = onDismissRequest,
+            confirmButton = {
+                TextButton(
+                    onClick = { onConfirm(datePickerState.selectedDateMillis) },
+                    enabled = datePickerState.selectedDateMillis != null,
+                ) { Text("确认导入") }
+            },
+            dismissButton = { TextButton(onClick = onDismissRequest) { Text("取消") } },
+        ) {
             ImportStartDatePickerBody(
                 datePickerState = datePickerState,
                 errorMessage = errorMessage,
@@ -259,36 +251,27 @@ internal fun ImportStartDatePickerBody(
     errorMessage: String? = null,
     onOpenAcademicCalendar: () -> Unit,
 ) {
-    DatePicker(
-        state = datePickerState,
-        showModeToggle = false,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = errorMessage ?: "选第一教学周周一",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (errorMessage == null) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    onClick = onOpenAcademicCalendar,
-                    modifier = Modifier.padding(start = 4.dp),
-                ) {
-                    Text("厦大校历（2026–2027）", maxLines = 1)
-                }
-            }
-        },
-    )
+    Column {
+        Text(
+            "请选择第一教学周的星期一作为开学日期",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        TextButton(
+            onClick = onOpenAcademicCalendar,
+            modifier = Modifier.padding(start = 16.dp),
+        ) {
+            Text("查看厦大校历（2026–2027 学年）")
+        }
+        errorMessage?.let { error ->
+            Text(
+                error,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+        }
+        DatePicker(state = datePickerState, showModeToggle = false)
+    }
 }
 
 /** 读取 SAF 选中的 HTML 文件为字符串；失败返回 null。 */

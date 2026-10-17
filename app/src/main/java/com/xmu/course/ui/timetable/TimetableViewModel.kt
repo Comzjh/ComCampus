@@ -36,7 +36,7 @@ data class TimetableUiState(
     val config: TimetableConfig = TimetableConfig(timetableId = 0L),
     /** 实际教学周：startDate + 今天自动计算，用户查看操作不会改变它。 */
     val actualWeek: Int = 1,
-    /** 查看周：用户当前浏览的周，默认等于 actualWeek，可手动切换并按课表持久化。 */
+    /** 查看周：只在本次前台会话内保留；重新打开时归位 actualWeek。 */
     val viewWeek: Int = 1,
     val totalWeeks: Int = 25,
     val isLoading: Boolean = true,
@@ -45,6 +45,8 @@ data class TimetableUiState(
     val showGrid: Boolean = true,
     /** 已同步畅课课程与本地课程的运行时关联，不写入本地课表表结构。 */
     val tronCourseLinks: Map<Long, TimetableMatchModel> = emptyMap(),
+    /** 每次重新进入前台都请求 Pager 定位，即使目标周与上次状态相同。 */
+    val weekResetGeneration: Long = 0L,
 )
 
 /**
@@ -57,7 +59,8 @@ data class TimetableUiState(
 class TimetableViewModel(
     application: Application,
     private val repository: TimetableFeatureRepository,
-    private val viewWeekPreference: ViewWeekPreference,
+    // 保留组合根的构造接口；跨会话保存的查看周不再参与浏览状态。
+    @Suppress("UNUSED_PARAMETER") viewWeekPreference: ViewWeekPreference,
     /** 时间轴文字样式：全局显示偏好，由组合根注入；默认用于测试。 */
     val axisStyle: StateFlow<TimetableAxisStyle> = MutableStateFlow(TimetableAxisStyle()),
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -66,6 +69,8 @@ class TimetableViewModel(
     private val _uiState = MutableStateFlow(TimetableUiState())
     val uiState: StateFlow<TimetableUiState> = _uiState.asStateFlow()
     private var dateBoundaryJob: Job? = null
+    private var isForeground = false
+    private val sessionViewWeeks = mutableMapOf<Long, Int>()
 
 
     init {
@@ -74,17 +79,23 @@ class TimetableViewModel(
                 repository.observeCurrentTimetableState(),
                 DisplaySettings.showGrid,
             ) { featureState, showGrid ->
+                val previous = _uiState.value
                 val timetable = featureState.timetable
                 if (timetable == null) {
-                    TimetableUiState(isLoading = false, hasData = false, showGrid = showGrid)
+                    TimetableUiState(
+                        isLoading = false,
+                        hasData = false,
+                        showGrid = showGrid,
+                        weekResetGeneration = previous.weekResetGeneration,
+                    )
                 } else {
                     val actualWeek = computeCurrentWeek(timetable, LocalDate.now(clock))
                         .coerceIn(1, timetable.totalWeeks)
                     val viewWeek = resolveViewWeek(
-                        previousTimetableId = _uiState.value.timetable?.id,
-                        previousViewWeek = _uiState.value.viewWeek,
+                        previousTimetableId = previous.timetable?.id,
+                        previousViewWeek = previous.viewWeek,
                         timetableId = timetable.id,
-                        savedViewWeek = viewWeekPreference.getViewWeek(timetable.id),
+                        sessionViewWeek = sessionViewWeeks[timetable.id],
                         actualWeek = actualWeek,
                         totalWeeks = timetable.totalWeeks,
                     )
@@ -100,18 +111,23 @@ class TimetableViewModel(
                         hasData = true,
                         showGrid = showGrid,
                         tronCourseLinks = featureState.timetableLinks,
+                        weekResetGeneration = previous.weekResetGeneration,
                     )
                 }
             }
                 .collect { newState ->
+                    newState.timetable?.let { sessionViewWeeks[it.id] = newState.viewWeek }
                     _uiState.value = newState
                 }
         }
     }
 
-    /** App 恢复时立即重算实际周，并等待前台后续的本地日期边界。 */
+    /** 新的前台会话归位本周；重复的前台通知不打断用户浏览。 */
     fun onForeground() {
-        refreshActualWeek()
+        if (isForeground) return
+        isForeground = true
+        sessionViewWeeks.clear()
+        refreshActualWeek(resetViewWeek = true)
         dateBoundaryJob?.cancel()
         dateBoundaryJob = viewModelScope.launch {
             while (isActive) {
@@ -123,26 +139,35 @@ class TimetableViewModel(
 
     /** App 进入后台后停止日界等待；恢复时会按当前时钟重新计算。 */
     fun onBackground() {
+        isForeground = false
         dateBoundaryJob?.cancel()
         dateBoundaryJob = null
     }
 
-    private fun refreshActualWeek(today: LocalDate = LocalDate.now(clock)) {
+    private fun refreshActualWeek(
+        today: LocalDate = LocalDate.now(clock),
+        resetViewWeek: Boolean = false,
+    ) {
         _uiState.update { state ->
-            val timetable = state.timetable ?: return@update state
-            val actualWeek = computeCurrentWeek(timetable, today)
-            if (actualWeek == state.actualWeek) state else state.copy(actualWeek = actualWeek)
+            val actualWeek = state.timetable?.let { computeCurrentWeek(it, today) } ?: state.actualWeek
+            state.copy(
+                actualWeek = actualWeek,
+                viewWeek = if (resetViewWeek) actualWeek else state.viewWeek,
+                weekResetGeneration = state.weekResetGeneration + if (resetViewWeek) 1L else 0L,
+            )
+        }
+        if (resetViewWeek) {
+            _uiState.value.timetable?.let { sessionViewWeeks[it.id] = _uiState.value.viewWeek }
         }
     }
 
-    /** 切换查看周（仅影响浏览，不改 actualWeek），并按课表持久化。 */
+    /** 切换查看周只保存在本次前台会话，不改 actualWeek 或跨会话偏好。 */
     fun selectWeek(week: Int) {
-        val coerced = week.coerceIn(1, _uiState.value.totalWeeks)
+        val state = _uiState.value
+        val timetable = state.timetable ?: return
+        val coerced = week.coerceIn(1, state.totalWeeks)
+        sessionViewWeeks[timetable.id] = coerced
         _uiState.update { it.copy(viewWeek = coerced) }
-        val timetable = _uiState.value.timetable
-        if (timetable != null) {
-            viewWeekPreference.setViewWeek(timetable.id, coerced)
-        }
     }
 
     /** 回到本周：viewWeek = actualWeek。 */
@@ -177,20 +202,20 @@ class TimetableViewModel(
         /**
          * 解析查看周：
          * - 同一课表：保持用户当前浏览位置（不回跳）；
-         * - 换课表：恢复该课表保存的查看周，未保存过则回退实际周。
+         * - 换课表：恢复本次会话中该课表的浏览位置，首次查看则使用实际周。
          */
         fun resolveViewWeek(
             previousTimetableId: Long?,
             previousViewWeek: Int,
             timetableId: Long,
-            savedViewWeek: Int?,
+            sessionViewWeek: Int?,
             actualWeek: Int,
             totalWeeks: Int,
         ): Int =
             if (previousTimetableId == timetableId) {
                 previousViewWeek.coerceIn(1, totalWeeks)
             } else {
-                (savedViewWeek ?: actualWeek).coerceIn(1, totalWeeks)
+                (sessionViewWeek ?: actualWeek).coerceIn(1, totalWeeks)
             }
 
         /** 根据课表开始日期计算教学周；startDate 未设置时返回 1。 */

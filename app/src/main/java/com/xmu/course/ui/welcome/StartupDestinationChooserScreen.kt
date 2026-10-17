@@ -3,7 +3,6 @@ package com.xmu.course.ui.welcome
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
@@ -22,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,7 +51,7 @@ fun StartupDestinationChooserScreen(
     modifier: Modifier = Modifier,
 ) {
     var selected by rememberSaveable { mutableStateOf<StartupDestination?>(null) }
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -96,7 +97,7 @@ fun StartupDestinationChooserScreen(
                 enabled = selected != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .heightIn(min = 52.dp)
                     .testTag("startup_choice_continue"),
             ) {
                 Text("继续")
@@ -122,17 +123,8 @@ private fun StartupOption(
             .testTag(tag),
         shape = AppShapes.Card,
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
-        border = if (selected) {
-            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-        } else {
-            null
-        },
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -154,6 +146,7 @@ private fun StartupOption(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            RadioButton(selected = selected, onClick = null)
         }
     }
 }

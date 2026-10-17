@@ -3,6 +3,7 @@ package com.xmu.course.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -123,7 +124,7 @@ private fun SettingsScreenContent(
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(AppSpacing.PagePadding),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Lg),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxl),
         ) {
             AppLargeTitleHeader(title = "设置", trailingContent = { TutorialToolbarAction() })
             // ---- 个人中心 ----
@@ -134,6 +135,8 @@ private fun SettingsScreenContent(
                     onClick = onOpenProfile,
                 )
             }
+
+            SettingsCourseReminderSection(onOpenTimetableManager = onOpenTimetableManager)
 
             // ---- 外观 ----
             AppGroupedSection(title = "外观", modifier = Modifier.tutorialTarget(TutorialTargetKey.SETTINGS_APPEARANCE)) {
@@ -155,11 +158,11 @@ private fun SettingsScreenContent(
 
 
             // ---- 当前本机课表学期 ----
-            AppGroupedSection(title = "当前课表学期") {
+            AppGroupedSection(title = "导入的学期") {
                 val semester = state.semester
                 if (semester == null) {
                     Text(
-                        "本机还没有课表，请先导入课表",
+                        "尚未导入学期课表",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
@@ -198,7 +201,7 @@ private fun SettingsScreenContent(
                 SectionDivider()
                 SettingSwitch(
                     title = "自动刷新畅课待办",
-                    subtitle = "仅在应用前台刷新，每小时最多一次",
+                    subtitle = "应用与桌面小组件每小时计划同步，需联网并保持登录",
                     checked = state.autoRefreshTodo,
                     onChange = onAutoRefreshTodoChanged,
                 )
@@ -465,7 +468,7 @@ private fun StartupChoiceButton(label: String, selected: Boolean, tag: String, o
 
 @Composable
 private fun SectionDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
 }
 
 @Composable
@@ -473,11 +476,12 @@ private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onC
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-            .padding(vertical = AppSpacing.Xs),
+            .padding(vertical = AppSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).padding(end = AppSpacing.Md)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(
                 subtitle,

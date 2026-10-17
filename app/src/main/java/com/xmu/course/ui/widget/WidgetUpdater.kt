@@ -5,12 +5,19 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.util.Log
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.xmu.course.data.TimetablePrefs
 import com.xmu.course.data.widget.WidgetDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -26,8 +33,13 @@ object WidgetUpdater {
     private const val REQUEST_CODE_MINUTE_TICK = 1001
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var observerJob: Job? = null
+    private val refreshGeneration = MutableStateFlow(0L)
+
+    internal fun observeRefreshRequests(): Flow<Unit> = refreshGeneration.map { Unit }
 
     /** Application 启动时调用，保持 Widget 跟随当前课表和 Room 数据。 */
+    @Synchronized
     fun start(
         context: Context,
         dataSource: WidgetDataSource = WidgetDataSource.from(context),
@@ -37,21 +49,37 @@ object WidgetUpdater {
         // 应用启动或桌面首次添加组件时，先登记一次分钟刷新；后续由 receiver 续期。
         scheduleMinuteRefresh(appContext)
 
-        appScope.launch {
+        if (observerJob?.isActive == true) return
+
+        observerJob = appScope.launch {
             dataSource.observeInvalidation().collectLatest {
-                updateAll(appContext)
+                try {
+                    updateAll(appContext)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // One failed host update must not permanently stop Room observation.
+                    Log.w("WidgetUpdater", "Widget host refresh failed")
+                }
             }
         }
     }
 
-    /** Re-render widgets after system configuration changes such as light/dark mode. */
     fun refreshForConfigurationChange(context: Context) {
-        val appContext = context.applicationContext
-        appScope.launch { updateAll(appContext) }
+        appScope.launch {
+            try {
+                updateAll(context.applicationContext)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                Log.w("WidgetUpdater", "Widget configuration refresh failed")
+            }
+        }
     }
 
-    /** Refresh every widget backed by the shared local database. */
+    /** Refresh both active Glance compositions and dormant widget instances. */
     suspend fun updateAll(context: Context) {
+        refreshGeneration.update { it + 1 }
         val appContext = context.applicationContext
         val manager = GlanceAppWidgetManager(appContext)
         manager.getGlanceIds(TodayCourseWidget::class.java).forEach { glanceId ->

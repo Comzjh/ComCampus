@@ -5,12 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,7 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,9 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.providermanagement.ProviderDataManagementViewModel.UiState
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
 
 private const val DELETE_CONFIRM_TITLE = "删除此来源数据？"
 
@@ -89,7 +91,7 @@ fun ProviderDataManagementScreen(
                     )
                     is UiState.Loaded -> Text(
                         text = if (current.count > 0) "本机数据：${current.count} 条" else "本机暂无该来源数据",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.testTag("provider_local_count"),
                     )
                     UiState.Unavailable -> Text(
@@ -103,14 +105,15 @@ fun ProviderDataManagementScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(
+            TextButton(
                 onClick = { showConfirmDialog = true },
                 enabled = canDelete && !deleting,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.error,
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.Card,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) {
                 Text(if (deleting) "删除中…" else "删除此来源数据")
             }

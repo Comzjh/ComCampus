@@ -50,6 +50,7 @@ private class RoomWidgetDataSource(
             database.skippedCourseDao().observeSkippedCourseIds().map { Unit },
             database.timetableDao().observeAllWithCount().map { Unit },
             database.todoDao().observeAll().map { Unit },
+            database.tronCourseDao().observeAll().map { Unit },
         )
     }
 }

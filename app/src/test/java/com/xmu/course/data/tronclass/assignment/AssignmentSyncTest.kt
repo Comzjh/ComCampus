@@ -182,7 +182,7 @@ class AssignmentSyncTest {
     }
 
     @Test
-    fun assignmentPresentInFullSnapshotIsNotCompletedWhenBaselineFiltersImport() = runTest {
+    fun assignmentPresentBeforeBaselineIsUpdatedWithoutBeingCompleted() = runTest {
         val syncTime = 10_000L
         db.tronTodoSyncMetadataDao().insertIfAbsent(
             TronTodoSyncMetadataEntity(importBaselineAt = 5_000L),
@@ -209,14 +209,18 @@ class AssignmentSyncTest {
             ),
         )
 
-        assertEquals(TronResult.Success(0), repository(api, clock = { syncTime }).syncAssignments())
+        assertEquals(TronResult.Success(1), repository(api, clock = { syncTime }).syncAssignments())
         val todo = db.todoDao().getAll().single()
         assertFalse(todo.completed)
-        assertEquals("仍存在的作业", todo.title)
+        assertEquals("基线前的作业", todo.title)
+        assertEquals(4_999L, todo.deadline)
+        assertEquals("621", todo.externalId)
+        assertEquals(1L, todo.createdTime)
+        assertEquals(syncTime, todo.updatedTime)
     }
 
     @Test
-    fun allPagesAreWrittenAndOldTodoIsKeptWhenParsingFails() = runTest {
+    fun `分页结果全部写入且解析失败时旧Todo保持`() = runTest {
         val old = TodoEntity(
             title = "旧作业", description = "", courseId = null,
             source = TodoSource.TRONCLASS.name, deadline = null,
@@ -226,7 +230,7 @@ class AssignmentSyncTest {
         val api = FakeApi(
             responses = mapOf(
                 1 to Response.success(page(AssignmentDto(123L, "第一页", "", 9001L, null, null), pages = 2)),
-                2 to Response.success(page(AssignmentDto(124L, "第二页", "", 9001L, null, null), pages = 2)),
+                2 to Response.success(page(AssignmentDto(124L, "第二页", "", 9001L, null, null), pages = 2).copy(page = 2)),
             ),
         )
         val repository = repository(api, pageSize = 1)

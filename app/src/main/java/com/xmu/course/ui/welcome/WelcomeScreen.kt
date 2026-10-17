@@ -10,11 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.xmu.course.ui.theme.AppShapes
 import kotlinx.coroutines.launch
 
 /**
@@ -159,7 +161,7 @@ fun WelcomeScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .heightIn(min = 52.dp)
                     .testTag(when {
                         pagerState.currentPage == 0 -> "welcome_start"
                         isLastPage -> "welcome_finish"
@@ -208,36 +210,38 @@ private fun WelcomePageContent(page: WelcomePage) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
             page.title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             page.body,
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(20.dp))
-        page.tips.forEach { tip ->
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-            ) {
-                Text(
-                    tip,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                )
+        Spacer(Modifier.height(24.dp))
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = AppShapes.Card,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                page.tips.forEachIndexed { index, tip ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                        )
+                    }
+                    Text(tip, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

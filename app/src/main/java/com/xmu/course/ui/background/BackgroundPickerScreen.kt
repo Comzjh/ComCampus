@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -34,7 +34,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,6 +59,8 @@ import com.xmu.course.XmuCourseApplication
 import com.xmu.course.data.TimetablePrefs
 import com.xmu.course.domain.BackgroundType
 import com.xmu.course.domain.TimetableConfig
+import com.xmu.course.ui.components.AppSectionCard
+import com.xmu.course.ui.theme.AppShapes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,7 +95,7 @@ class BackgroundPickerViewModel(application: Application) : AndroidViewModel(app
 
     fun update(transform: (TimetableConfig) -> TimetableConfig) {
         val config = _state.value.config ?: return
-        viewModelScope.launch { repo.updateBackground(transform(config)) }
+        viewModelScope.launch { repo.updateConfig(config.timetableId, transform) }
     }
 
     fun selectNone() = update { it.copy(backgroundType = BackgroundType.NONE, backgroundValue = null) }
@@ -174,25 +177,86 @@ fun BackgroundPickerScreen(
                 return@Column
             }
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("当前预览", style = MaterialTheme.typography.titleMedium)
+            AppSectionCard(title = "当前预览") {
+                Box(
+                    Modifier
+                        .padding(top = 12.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(9f / 16f)
+                        .clip(RoundedCornerShape(16.dp)),
+                ) {
+                    BackgroundContent(config)
+                }
+            }
+
+            AppSectionCard(title = "默认", modifier = Modifier.padding(top = 20.dp)) {
+                val noneSelected = config.backgroundType == BackgroundType.NONE
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box(
                         Modifier
-                            .padding(top = 12.dp)
-                            .fillMaxWidth()
-                            .height(240.dp)
-                            .clip(RoundedCornerShape(16.dp)),
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                    Text("不使用背景", Modifier.weight(1f).padding(start = 12.dp))
+                    FilterChip(
+                        selected = noneSelected,
+                        onClick = viewModel::selectNone,
+                        label = { Text(if (noneSelected) "使用中" else "使用") },
+                    )
+                }
+            }
+
+            AppSectionCard(title = "厦大主题", modifier = Modifier.padding(top = 20.dp)) {
+                val labels = mapOf(
+                    "jiageng" to "嘉庚楼群",
+                    "furong_lake" to "芙蓉湖",
+                    "shangxian" to "上弦场",
+                    "siming_night" to "思明校区夜景",
+                    "xiangan" to "翔安校区",
+                )
+                xmuBackgrounds.forEach { (value, resId) ->
+                    val selected = config.backgroundType == BackgroundType.BUILT_IN &&
+                        config.backgroundValue == value
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        BackgroundContent(config)
+                        Box(
+                            Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                        ) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(resId),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text(labels[value] ?: value)
+                            Text(
+                                "内置主题",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        FilterChip(
+                            selected = selected,
+                            onClick = { viewModel.selectBuiltIn(value) },
+                            label = { Text(if (selected) "使用中" else "使用") },
+                        )
                     }
                 }
             }
 
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("默认", style = MaterialTheme.typography.titleMedium)
-                    val noneSelected = config.backgroundType == BackgroundType.NONE
+            AppSectionCard(title = "纯色背景", modifier = Modifier.padding(top = 20.dp)) {
+                solidBackgrounds.forEach { (label, colorValue) ->
+                    val selected = config.backgroundType == BackgroundType.SOLID &&
+                        config.backgroundValue == colorValue
                     Row(
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -201,92 +265,24 @@ fun BackgroundPickerScreen(
                             Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .background(solidColor(colorValue)),
                         )
-                        Text("不使用背景", Modifier.weight(1f).padding(start = 12.dp))
+                        Text(label, Modifier.weight(1f).padding(start = 12.dp))
                         FilterChip(
-                            selected = noneSelected,
-                            onClick = viewModel::selectNone,
-                            label = { Text(if (noneSelected) "使用中" else "使用") },
+                            selected = selected,
+                            onClick = { viewModel.selectSolid(colorValue) },
+                            label = { Text(if (selected) "使用中" else "使用") },
                         )
                     }
                 }
             }
 
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("厦大主题", style = MaterialTheme.typography.titleMedium)
-                    val labels = mapOf(
-                        "jiageng" to "嘉庚楼群",
-                        "furong_lake" to "芙蓉湖",
-                        "shangxian" to "上弦场",
-                        "siming_night" to "思明校区夜景",
-                        "xiangan" to "翔安校区",
-                    )
-                    xmuBackgrounds.forEach { (value, resId) ->
-                        val selected = config.backgroundType == BackgroundType.BUILT_IN &&
-                            config.backgroundValue == value
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(56.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                            ) {
-                                androidx.compose.foundation.Image(
-                                    painter = androidx.compose.ui.res.painterResource(resId),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                )
-                            }
-                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(labels[value] ?: value)
-                                Text(
-                                    "内置主题",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            FilterChip(
-                                selected = selected,
-                                onClick = { viewModel.selectBuiltIn(value) },
-                                label = { Text(if (selected) "使用中" else "使用") },
-                            )
-                        }
-                    }
-                }
-            }
-
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("纯色背景", style = MaterialTheme.typography.titleMedium)
-                    solidBackgrounds.forEach { (label, colorValue) ->
-                        val selected = config.backgroundType == BackgroundType.SOLID &&
-                            config.backgroundValue == colorValue
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(solidColor(colorValue)),
-                            )
-                            Text(label, Modifier.weight(1f).padding(start = 12.dp))
-                            FilterChip(
-                                selected = selected,
-                                onClick = { viewModel.selectSolid(colorValue) },
-                                label = { Text(if (selected) "使用中" else "使用") },
-                            )
-                        }
-                    }
-                }
-            }
-
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                shape = AppShapes.Card,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
                 Column(Modifier.padding(16.dp)) {
                     var blur by remember(config.blurRadius) { mutableFloatStateOf(config.blurRadius.toFloat()) }
                     Text("背景模糊度 ${blur.toInt()}dp")
@@ -302,29 +298,27 @@ fun BackgroundPickerScreen(
                 }
             }
 
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("我的图片", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "仅保存本地图片 URI，不上传，不复制到云端。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(
-                        onClick = {
-                            picker.launch(
-                                PickVisualMediaRequest(
-                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                ),
-                            )
-                        },
-                        modifier = Modifier.padding(top = 12.dp),
-                    ) { Text("选择图片") }
-                    if (config.backgroundType == BackgroundType.CUSTOM) {
-                        OutlinedButton(
-                            onClick = onOpenEditor,
-                            modifier = Modifier.padding(top = 8.dp),
-                        ) { Text("编辑裁剪 / 遮罩") }
-                    }
+            AppSectionCard(title = "我的图片", modifier = Modifier.padding(top = 20.dp)) {
+                Text(
+                    "仅保存本地图片 URI，不上传，不复制到云端。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        picker.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.padding(top = 12.dp),
+                ) { Text("选择图片") }
+                if (config.backgroundType == BackgroundType.CUSTOM) {
+                    TextButton(
+                        onClick = onOpenEditor,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) { Text("编辑裁剪 / 遮罩") }
                 }
             }
         }

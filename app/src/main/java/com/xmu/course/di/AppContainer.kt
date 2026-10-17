@@ -90,7 +90,7 @@ class TodoDependencies(
     val refreshCoordinator: TodoRefreshCoordinator,
     val autoSyncCoordinator: TodoAutoSyncCoordinator,
     val featureRepository: TodoFeatureRepository = TodoFeatureRepositoryAdapter(repository),
-    val refreshReader: TodoRefreshReader = TodoRefreshAdapter(refreshCoordinator),
+    val refreshReader: TodoRefreshReader = TodoRefreshAdapter(autoSyncCoordinator),
 )
 
 /** 设置页使用的本地设置能力图；具体 SharedPreferences 实现只在此组装。 */

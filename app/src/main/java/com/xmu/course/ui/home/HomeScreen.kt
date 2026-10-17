@@ -18,12 +18,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.xmu.course.contracts.todo.model.TodoFeatureModel
 import com.xmu.course.contracts.todo.model.TodoFeatureSource
 import com.xmu.course.domain.todo.TodoDatePolicy
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppLargeTitleHeader
+import com.xmu.course.ui.components.AppListDivider
 import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
@@ -138,7 +140,7 @@ private fun TodayFocusCard(
                 today.remaining.forEach { course -> SupportingCourseRow(null, course) }
                 Text(
                     "今天还有 ${today.remainingCount} 节安排",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = AppSpacing.Xs),
                 )
@@ -161,13 +163,21 @@ private fun TodayFocusCard(
 
 @Composable
 private fun FocusCourseRow(course: WidgetCourse, status: String, tone: StatusTone, tag: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().testTag(tag),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm).testTag(tag),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(course.name, style = MaterialTheme.typography.titleLarge, maxLines = 2)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+        ) {
+            Text(
+                course.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 homeTimeRangeLabel(course),
                 style = MaterialTheme.typography.bodyMedium,
@@ -180,16 +190,22 @@ private fun FocusCourseRow(course: WidgetCourse, status: String, tone: StatusTon
 
 @Composable
 private fun SupportingCourseRow(label: String?, course: WidgetCourse, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.Xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+    Column(
+        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.Sm),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        AppListDivider(inset = AppSpacing.Xxs)
+        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
             label?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(course.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+            Text(
+                course.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Text(
             homeTimeRangeLabel(course),
@@ -233,7 +249,7 @@ private fun UrgentTodoCard(
                 dashboard.urgentTodoCount?.let { count ->
                     Text(
                         "$count 项需要注意",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.testTag("home_todo_count"),
                     )
@@ -273,15 +289,21 @@ private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
         TodoUrgency.NORMAL -> StatusTone.Neutral
     }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
         ) {
-            Text(todo.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                todo.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,

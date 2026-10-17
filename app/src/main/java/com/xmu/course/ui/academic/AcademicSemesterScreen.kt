@@ -21,7 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -84,6 +84,7 @@ fun AcademicSemesterScreen(
             AcademicCompletionStore.State.Empty -> AppEmptyState(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .padding(horizontal = AppSpacing.PagePadding)
                     .testTag("academic_semester_empty"),
                 title = "本学期数据尚未刷新",
                 description = "回到「学业」页点击刷新，即可从教务获取本学期课程。",
@@ -92,6 +93,7 @@ fun AcademicSemesterScreen(
             is AcademicCompletionStore.State.StorageFailure -> AppEmptyState(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .padding(horizontal = AppSpacing.PagePadding)
                     .testTag("academic_semester_storage_failure"),
                 title = "本机快照读取失败",
                 description = state.message,
@@ -104,7 +106,7 @@ fun AcademicSemesterScreen(
                         .fillMaxSize()
                         .padding(innerPadding),
                     contentPadding = PaddingValues(AppSpacing.PagePadding),
-                    verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                 ) {
                     item {
                         AppSectionCard(
@@ -114,33 +116,34 @@ fun AcademicSemesterScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(vertical = AppSpacing.Sm)
                                     .testTag("academic_semester_summary_metrics"),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
                             ) {
                                 Column(
                                     modifier = Modifier.weight(0.8f),
-                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                                 ) {
                                     Text(
                                         "${snapshot.enrolledCourses.size} 门",
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.headlineMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier.testTag("academic_semester_metric_courses"),
                                     )
                                     Text(
                                         "在修课程",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 Column(
                                     modifier = Modifier.weight(1.2f),
-                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                                 ) {
                                     Text(
                                         "学校页面统计",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(

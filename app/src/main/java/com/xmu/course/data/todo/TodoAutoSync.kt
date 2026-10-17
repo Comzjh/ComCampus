@@ -2,6 +2,8 @@ package com.xmu.course.data.todo
 
 import android.content.Context
 import com.xmu.course.data.readSafely
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface TodoAutoSyncSettings {
     fun isEnabled(): Boolean
@@ -50,7 +52,7 @@ sealed interface TodoAutoSyncResult {
     data class Completed(val result: TodoRefreshResult) : TodoAutoSyncResult
 }
 
-/** Applies the auto-sync setting, session check, throttle, and successful-sync timestamp. */
+/** 前台与Widget共享的同步门禁和互斥；调度由调用方负责。 */
 class TodoAutoSyncCoordinator(
     private val refreshCoordinator: TodoRefreshCoordinator,
     private val settings: TodoAutoSyncSettings,
@@ -58,28 +60,27 @@ class TodoAutoSyncCoordinator(
     private val intervalMillis: Long = 60L * 60L * 1000L,
     private val isSessionAvailable: () -> Boolean = { true },
 ) {
-    suspend fun refreshIfDue(): TodoAutoSyncResult {
-        if (!settings.isEnabled()) return TodoAutoSyncResult.SkippedDisabled
-        if (!isSessionAvailable()) return TodoAutoSyncResult.SkippedUnauthenticated
+    private val syncMutex = Mutex()
+
+    suspend fun refreshIfDue(): TodoAutoSyncResult = syncMutex.withLock {
+        if (!settings.isEnabled()) return@withLock TodoAutoSyncResult.SkippedDisabled
+        if (!isSessionAvailable()) return@withLock TodoAutoSyncResult.SkippedUnauthenticated
         val last = settings.lastSuccessfulSyncAt()
         if (last != null && now() - last < intervalMillis) {
-            return TodoAutoSyncResult.SkippedThrottled
+            return@withLock TodoAutoSyncResult.SkippedThrottled
         }
-        return refreshAndRecord()
+        refreshAndRecord()
     }
 
-    /** Widget 的手动刷新绕过自动同步开关和节流，但仍要求已有登录态。 */
-    suspend fun refreshNow(): TodoAutoSyncResult {
-        if (!isSessionAvailable()) return TodoAutoSyncResult.SkippedUnauthenticated
-        return refreshAndRecord()
+    /** Manual refresh bypasses automatic settings/throttle, while retaining the session gate. */
+    suspend fun refreshNow(): TodoAutoSyncResult = syncMutex.withLock {
+        if (!isSessionAvailable()) return@withLock TodoAutoSyncResult.SkippedUnauthenticated
+        refreshAndRecord()
     }
 
     private suspend fun refreshAndRecord(): TodoAutoSyncResult {
-        val current = now()
         val result = refreshCoordinator.refresh()
-        if (result is TodoRefreshResult.Success) {
-            settings.setLastSuccessfulSyncAt(current)
-        }
+        if (result is TodoRefreshResult.Success) settings.setLastSuccessfulSyncAt(now())
         return TodoAutoSyncResult.Completed(result)
     }
 }

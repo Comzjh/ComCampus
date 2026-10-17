@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -25,7 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,6 +51,7 @@ import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
 import com.xmu.course.ui.tutorial.TutorialAutoScroll
 import com.xmu.course.ui.tutorial.TutorialHost
 import com.xmu.course.ui.tutorial.TutorialTargetKey
@@ -104,25 +106,28 @@ private fun GradesSandboxScreenContent(
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(AppSpacing.PagePadding),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
         ) {
-            Text(
-                "调整本学期或未来课程的成绩，看看 GPA 和目标差距会怎么变化。",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "模拟只在手机上推演，不会修改你的真实成绩。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("grades_local_only_note"),
-            )
-            // 刻度与参与规则只在页顶说明一次，避免每行重复长句。
-            Text(
-                "拖动滑块设分数（60–100），或直接填等级；没设置过的课程不参与计算。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("grades_scale_note"),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
+                Text(
+                    "调整本学期或未来课程的成绩，看看 GPA 和目标差距会怎么变化。",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "模拟只在手机上推演，不会修改你的真实成绩。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("grades_local_only_note"),
+                )
+                // 刻度与参与规则只在页顶说明一次，避免每行重复长句。
+                Text(
+                    "拖动滑块设分数（60–100），或直接填等级；没设置过的课程不参与计算。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("grades_scale_note"),
+                )
+            }
 
             // BUG-05：只有“本机确实没有任何学业快照”才算空态；部分数据不再说“没数据”。
             if (seed.availability is AcademicSimulationAvailability.Empty) {
@@ -135,7 +140,7 @@ private fun GradesSandboxScreenContent(
                 )
                 OutlinedButton(
                     onClick = viewModel::addCourse,
-                    modifier = Modifier.testTag("grades_add_course_without_data"),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("grades_add_course_without_data"),
                 ) { Text("手动添加模拟课程") }
                 return@Column
             }
@@ -229,11 +234,12 @@ private fun GradesSandboxScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("grades_result"),
-                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                     ) {
                         Text("预计 GPA：${"%.2f".format(Locale.US, result.gpa)}",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = AppSpacing.Sm),
                         )
                         Text(
                             "参与 " + result.simulatedCourseCount + " 门",
@@ -248,7 +254,10 @@ private fun GradesSandboxScreenContent(
                                 modifier = Modifier.testTag("grades_result_skipped"),
                             )
                         }
-                        Text("模拟后总学分：${"%.2f".format(Locale.US, result.totalCredits)}")
+                        Text(
+                            "模拟后总学分：${"%.2f".format(Locale.US, result.totalCredits)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                         result.targetGap?.let { gap ->
                             Text(
                                 if (gap <= 0.0) "已达到目标，还高出 ${"%.2f".format(Locale.US, -gap)}。"
@@ -268,6 +277,7 @@ private fun GradesSandboxScreenContent(
                     onClick = viewModel::simulate,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
                         .testTag("grades_simulate"),
                 ) { Text("计算模拟 GPA") }
                 // 重置只影响模拟值，降为文字按钮，避免与主操作同权重。
@@ -284,6 +294,7 @@ private fun GradesSandboxScreenContent(
                     .tutorialTarget(TutorialTargetKey.SIMULATION_TARGET_GPA),
             ) {
                 OutlinedTextField(
+                    shape = AppShapes.Button,
                     value = state.targetGpa,
                     onValueChange = viewModel::updateTargetGpa,
                     label = { Text("目标 GPA") },
@@ -349,6 +360,7 @@ private fun BaselineCard(
     ) {
         if (state.manualBaselineEnabled) {
             OutlinedTextField(
+                shape = AppShapes.Button,
                 value = state.manualCurrentGpa,
                 onValueChange = onManualCurrentGpaChange,
                 label = { Text("当前 GPA") },
@@ -359,6 +371,7 @@ private fun BaselineCard(
                     .testTag("grades_manual_gpa"),
             )
             OutlinedTextField(
+                shape = AppShapes.Button,
                 value = state.manualCompletedCredits,
                 onValueChange = onManualCompletedCreditsChange,
                 label = { Text("已修学分") },
@@ -376,12 +389,16 @@ private fun BaselineCard(
         } else {
             when (baseline?.gpaStatus) {
                 SimulationGpaStatus.COMPUTED -> {
-                    Text("本地计算 GPA", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        "本地计算 GPA",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Text(
                         baseline.gpaText.orEmpty(),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.testTag("grades_baseline_gpa"),
+                        modifier = Modifier.padding(vertical = AppSpacing.Sm).testTag("grades_baseline_gpa"),
                     )
                 }
                 SimulationGpaStatus.NEEDS_CONFIRMATION -> {
@@ -447,15 +464,14 @@ private fun BaselineCard(
 /** 已有真实成绩：只读展示，已计入基线，避免重复计算。 */
 @Composable
 private fun GradedCourseRow(course: SimulationCourseSeed) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = AppSpacing.Md)
             .testTag("grades_graded_" + course.courseCode),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Text(course.courseName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(course.courseName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
         AppStatusChip("已有成绩 " + course.realGradeText.orEmpty(), tone = StatusTone.Neutral)
         Text(
             course.creditsText?.let { it + " 学分" } ?: "学分待确认",
@@ -473,13 +489,19 @@ private fun UnresolvedCourseRow(course: SimulationCourseSeed, onOpenSemester: ()
             .fillMaxWidth()
             .padding(vertical = AppSpacing.Md)
             .testTag("grades_unresolved_" + course.courseCode),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
         ) {
-            Text(course.courseName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                course.courseName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
             AppStatusChip("学分待确认", tone = StatusTone.Warning)
         }
         TextButton(onClick = onOpenSemester, modifier = Modifier.testTag("grades_open_semester")) {
@@ -503,13 +525,18 @@ private fun SimulatedCourseRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppSpacing.Md)
+            .padding(vertical = AppSpacing.Lg)
             .testTag("grades_course_" + course.id),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+        ) {
             if (editableIdentity) {
                 OutlinedTextField(
+                    shape = AppShapes.Button,
                     value = course.name,
                     onValueChange = onNameChange,
                     label = { Text("课程名称") },
@@ -521,17 +548,11 @@ private fun SimulatedCourseRow(
             } else {
                 Text(
                     course.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier
                         .weight(1f)
                         .testTag("grades_course_label_" + course.id),
                 )
-            }
-            if (course.outsidePlan) {
-                AppStatusChip("方案外", tone = StatusTone.Warning)
-            }
-            if (!course.participates) {
-                AppStatusChip("未设置", tone = StatusTone.Neutral)
             }
             if (onRemove != null) {
                 IconButton(onClick = onRemove, modifier = Modifier.testTag("grades_remove_course_" + course.id)) {
@@ -539,8 +560,17 @@ private fun SimulatedCourseRow(
                 }
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
+            if (course.outsidePlan) {
+                AppStatusChip("方案外", tone = StatusTone.Warning)
+            }
+            if (!course.participates) {
+                AppStatusChip("未设置", tone = StatusTone.Neutral)
+            }
+        }
         if (editableIdentity) {
             OutlinedTextField(
+                shape = AppShapes.Button,
                 value = course.credits,
                 onValueChange = onCreditsChange,
                 label = { Text("课程学分") },
@@ -576,15 +606,16 @@ private fun SimulatedCourseRow(
             )
             Text(
                 text = if (course.participates) gradeSummary(course) else "-",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.End,
-                maxLines = 1,
+                maxLines = 2,
                 modifier = Modifier
-                    .width(72.dp)
+                    .widthIn(min = 72.dp, max = 112.dp)
                     .testTag("grades_course_score_label_" + course.id),
             )
         }
         OutlinedTextField(
+            shape = AppShapes.Button,
             value = course.grade,
             onValueChange = onGradeChange,
             label = { Text("等级（填了覆盖分数）") },

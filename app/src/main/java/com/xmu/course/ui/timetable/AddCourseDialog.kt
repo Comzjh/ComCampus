@@ -6,13 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,10 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xmu.course.data.timetable.TimetableInputHelper
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.CourseSource
+import com.xmu.course.ui.theme.AppShapes
 
 /**
  * 手动添加课程对话框。
@@ -79,35 +81,41 @@ fun AddCourseDialog(
         )
     }
 
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    )
     AlertDialog(
+        modifier = Modifier.imePadding(),
         onDismissRequest = onDismiss,
-        title = { Text("添加课程") },
+        shape = AppShapes.Section,
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        title = { Text("添加课程", fontWeight = FontWeight.SemiBold) },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp)
-                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .testTag("add_course_dialog_scroll_content"),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(name, { name = it }, label = { Text("课程名称 *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(dayText, { dayText = it }, label = { Text("星期（星期一~星期日）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it }, label = { Text("课程名称 *") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+                OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+                OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+                OutlinedTextField(dayText, { dayText = it }, label = { Text("星期（星期一~星期日）") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(startSectionText, { startSectionText = it }, label = { Text("开始节次") }, singleLine = true, modifier = Modifier.weight(1f))
-                    OutlinedTextField(endSectionText, { endSectionText = it }, label = { Text("结束节次") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(startSectionText, { startSectionText = it }, label = { Text("开始节次") }, singleLine = true, modifier = Modifier.weight(1f), shape = AppShapes.Button, colors = fieldColors)
+                    OutlinedTextField(endSectionText, { endSectionText = it }, label = { Text("结束节次") }, singleLine = true, modifier = Modifier.weight(1f), shape = AppShapes.Button, colors = fieldColors)
                 }
-                OutlinedTextField(weeksText, { weeksText = it }, label = { Text("周数（如 1-16周 或 1-3单周,6,8-9）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(weeksText, { weeksText = it }, label = { Text("周数（如 1-16周 或 1-3单周,6,8-9）") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
                 error?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         },
         confirmButton = {
-            Button(onClick = {
+            Button(shape = AppShapes.Button, modifier = Modifier.heightIn(min = 48.dp), onClick = {
                 val course = buildCourse()
                 if (course == null) {
                     error = "请检查输入：名称必填、节次 1-${TimeTableConfig.sectionCount}、周数格式合法"

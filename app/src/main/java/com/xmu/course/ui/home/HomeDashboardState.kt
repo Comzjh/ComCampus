@@ -4,6 +4,7 @@ import com.xmu.course.contracts.todo.model.TodoFeatureModel
 import com.xmu.course.contracts.todo.model.TodoFeatureSource
 import com.xmu.course.domain.todo.TodoDatePolicy
 import com.xmu.course.ui.timetable.TimetableUiState
+import com.xmu.course.ui.timetable.TimetableCalendar
 import com.xmu.course.ui.todo.TodoState
 import com.xmu.course.ui.widget.WidgetCourse
 import com.xmu.course.ui.widget.WidgetRepository
@@ -49,12 +50,14 @@ fun resolveHomeDashboard(
     val week = timetableState.timetable?.let {
         WidgetRepository.computeCurrentWeek(it, clock.dateTime.toLocalDate())
     } ?: timetableState.actualWeek
-    val todayCourses = WidgetRepository.filterTodayCourses(
-        courses = timetableState.courses,
-        skippedIds = timetableState.skippedCourseIds,
-        week = week,
-        dayOfWeek = clock.dateTime.dayOfWeek.value,
-    ).filterNot(WidgetCourse::isSkipped)
+    val todayCourses = if (TimetableCalendar.isWithinSemester(timetableState.timetable, clock.dateTime.toLocalDate())) {
+        WidgetRepository.filterTodayCourses(
+            courses = timetableState.courses,
+            skippedIds = timetableState.skippedCourseIds,
+            week = week,
+            dayOfWeek = clock.dateTime.dayOfWeek.value,
+        ).filterNot(WidgetCourse::isSkipped)
+    } else emptyList()
     val nowMinute = clock.dateTime.hour * 60 + clock.dateTime.minute
     val current = todayCourses.firstOrNull {
         nowMinute in it.startMinuteOfDay until it.endMinuteOfDay

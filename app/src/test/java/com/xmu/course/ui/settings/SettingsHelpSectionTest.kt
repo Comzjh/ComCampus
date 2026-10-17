@@ -189,7 +189,7 @@ class SettingsHelpSectionTest {
     fun `semester section clarifies that enrolled courses need separate timetable import`() {
         showSettings()
 
-        composeRule.onNodeWithText("当前课表学期").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("导入的学期").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("学业课程与本机课表独立，需要另行导入。")
             .performScrollTo()
             .assertIsDisplayed()
@@ -199,11 +199,19 @@ class SettingsHelpSectionTest {
     fun `empty timetable state asks for timetable import in plain words`() {
         showSettings(semesters = emptyList())
 
-        composeRule.onNodeWithText("当前课表学期").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("本机还没有课表，请先导入课表").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("导入的学期").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("尚未导入学期课表").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("学业课程与本机课表独立，需要另行导入。")
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun `custom timetable is not described as a missing local timetable`() {
+        showSettings(semesters = listOf(Semester(id = 8L, code = "custom-123", name = "Synthetic custom timetable")))
+
+        composeRule.onNodeWithText("尚未导入学期课表").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("本机还没有课表，请先导入课表").assertDoesNotExist()
     }
 }
 

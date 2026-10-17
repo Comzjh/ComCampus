@@ -78,7 +78,7 @@ private fun AcademicHomeScreenContent(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(AppSpacing.PagePadding),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.ItemGap),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
     ) {
         AppLargeTitleHeader(title = "学业", trailingContent = { TutorialToolbarAction() })
 
@@ -104,7 +104,7 @@ private fun AcademicHomeScreenContent(
                 icon = Icons.Outlined.School,
                 actionLabel = "刷新学业数据",
                 onAction = onRefresh,
-                modifier = Modifier.testTag("academic_home_empty"),
+                modifier = Modifier.padding(vertical = AppSpacing.Sm).testTag("academic_home_empty"),
                 compact = true,
                 primaryAction = true,
             )
@@ -119,7 +119,7 @@ private fun AcademicHomeScreenContent(
                 icon = Icons.Outlined.School,
                 actionLabel = "刷新学业数据",
                 onAction = onRefresh,
-                modifier = Modifier.testTag("academic_home_no_grades"),
+                modifier = Modifier.padding(vertical = AppSpacing.Sm).testTag("academic_home_no_grades"),
                 compact = true,
                 primaryAction = true,
             )
@@ -160,17 +160,16 @@ private fun AcademicHomeScreenContent(
             ) {
                 val visibleCourses = snapshot.enrolledCourses.take(3)
                 visibleCourses.forEach { course ->
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = AppSpacing.Xxs),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                            .padding(vertical = AppSpacing.Sm),
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                     ) {
                         Text(
                             course.courseName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
                         )
                         if (!course.inPlan) {
                             AppStatusChip("方案外", tone = StatusTone.Warning)
@@ -212,7 +211,7 @@ private fun AcademicHomeScreenContent(
                     }
                 },
             ) {
-                Text(plan.planName, style = MaterialTheme.typography.bodyMedium)
+                Text(plan.planName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(
                     "修读要求与方案外课程在详情页确认。",
                     style = MaterialTheme.typography.bodySmall,
@@ -317,19 +316,19 @@ private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtTex
         modifier = Modifier.testTag("academic_overview_card"),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Lg),
         ) {
             AcademicProgressRing(fraction = overview.progressFraction)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
             ) {
                 Text("已修学分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     "${overview.earnedCreditsText} / ${overview.requiredCreditsText}",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.testTag("academic_credits_row"),
                 )
@@ -372,7 +371,7 @@ private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtTex
             "学校页面统计时间 ${overview.sourceSnapshotAt}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = AppSpacing.Xs),
+            modifier = Modifier.padding(top = AppSpacing.Sm),
         )
         Text(
             "本机获取时间 ${planFetchedAtText ?: "未记录"}",
@@ -384,7 +383,7 @@ private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtTex
 
 @Composable
 private fun AcademicProgressRing(fraction: Float?) {
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val progressColor = MaterialTheme.colorScheme.primary
     Box(contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.size(72.dp)) {
@@ -437,7 +436,7 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("academic_gpa_insufficient"),
             )
-            AcademicGpaTone.NEEDS_CONFIRMATION -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
+            AcademicGpaTone.NEEDS_CONFIRMATION -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
                 Text(
                     "需要确认 ${summary.candidateCount} 门方案外课程",
                     style = MaterialTheme.typography.titleMedium,
@@ -451,12 +450,12 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            AcademicGpaTone.COMPUTED -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs)) {
+            AcademicGpaTone.COMPUTED -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
                 Text("本地计算 GPA", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     summary.valueText.orEmpty(),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.testTag("academic_gpa_value"),
                 )
                 Text(
@@ -468,6 +467,7 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(vertical = AppSpacing.Sm)
                         .testTag("academic_gpa_primary_metrics"),
                     horizontalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
                 ) {
@@ -528,17 +528,17 @@ private fun AcademicGpaMetric(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
     ) {
         Text(
             value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.testTag(testTag),
         )
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -570,14 +570,13 @@ private fun AcademicHistoryPreviewCard(
             return@AppSectionCard
         }
         semesters.take(3).forEach { row ->
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = AppSpacing.Xxs),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                    .padding(vertical = AppSpacing.Sm),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
             ) {
-                Text(row.semesterDisplay, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(row.semesterDisplay, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 if (row.hasOutsidePlanCourse) {
                     AppStatusChip("方案外", tone = StatusTone.Warning)
                 }

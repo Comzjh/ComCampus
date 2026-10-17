@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -22,7 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,11 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
 
 /**
  * 历史成绩：按学期分组的官方成绩单缓存。
@@ -71,6 +74,7 @@ fun AcademicHistoryScreen(
             AppEmptyState(
                 modifier = Modifier
                     .padding(innerPadding)
+                    .padding(horizontal = AppSpacing.PagePadding)
                     .testTag("academic_history_empty"),
                 title = if (uiState.storageFailed) "本机成绩缓存读取失败" else "历史成绩尚未刷新",
                 description = if (uiState.storageFailed) {
@@ -97,6 +101,7 @@ fun AcademicHistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                 ) {
                     FilterChip(
+                        shape = AppShapes.Chip,
                         selected = uiState.selectedSemesterCode == null,
                         onClick = { viewModel.selectSemester(null) },
                         label = { Text("全部学期") },
@@ -104,6 +109,7 @@ fun AcademicHistoryScreen(
                     )
                     uiState.semesters.forEach { semester ->
                         FilterChip(
+                            shape = AppShapes.Chip,
                             selected = uiState.selectedSemesterCode == semester.row.semesterCode,
                             onClick = { viewModel.selectSemester(semester.row.semesterCode) },
                             label = { Text(semester.row.semesterDisplay) },
@@ -122,16 +128,14 @@ fun AcademicHistoryScreen(
                             "academic_history_semester_${semester.row.semesterCode}",
                         ),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Xs),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                         ) {
                             Text(
                                 "${semester.row.courseCount} 门 · ${semester.row.creditsText} 学分",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
                             )
                             if (semester.row.hasOutsidePlanCourse) {
                                 AppStatusChip("含方案外课程", tone = StatusTone.Warning)
@@ -152,12 +156,19 @@ fun AcademicHistoryScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = AppSpacing.Sm),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .padding(horizontal = AppSpacing.Sm, vertical = AppSpacing.Md),
+                                verticalAlignment = Alignment.Top,
                                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(course.courseName, style = MaterialTheme.typography.bodyLarge)
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                                ) {
+                                    Text(
+                                        course.courseName,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                    )
                                     val meta = buildList {
                                         course.courseNatureDisplay?.takeIf { it.isNotBlank() }?.let { add(it) }
                                         add("${course.creditsText} 学分")
@@ -167,14 +178,18 @@ fun AcademicHistoryScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    if (course.outsidePlan) {
+                                        AppStatusChip("方案外", tone = StatusTone.Warning)
+                                    }
                                 }
-                                if (course.outsidePlan) {
-                                    AppStatusChip("方案外", tone = StatusTone.Warning)
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
+                                Column(
+                                    modifier = Modifier.widthIn(max = 112.dp),
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                                ) {
                                     Text(
                                         course.gradeText,
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         textAlign = TextAlign.End,
                                         modifier = Modifier.testTag(
@@ -193,7 +208,10 @@ fun AcademicHistoryScreen(
                                 }
                             }
                             if (index != semester.courses.lastIndex) {
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = AppSpacing.Sm),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                                )
                             }
                         }
                     }

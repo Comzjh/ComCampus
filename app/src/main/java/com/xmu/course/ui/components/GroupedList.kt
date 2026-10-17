@@ -35,9 +35,9 @@ fun AppGroupedListHeader(
             start = AppSpacing.Lg + AppSpacing.Xs,
             end = AppSpacing.Lg,
             top = topSpacing,
-            bottom = AppSpacing.Xs,
+            bottom = AppSpacing.Sm,
         ),
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -50,7 +50,7 @@ fun AppListDivider(
 ) {
     HorizontalDivider(
         modifier = modifier.padding(start = inset),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
     )
 }
 
@@ -85,7 +85,7 @@ fun AppGroupedSection(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             AppListGroupContent(
-                modifier = Modifier.padding(horizontal = AppSpacing.Lg, vertical = AppSpacing.Xs),
+                modifier = Modifier.padding(horizontal = AppSpacing.Lg, vertical = AppSpacing.Sm),
                 content = content,
             )
         }

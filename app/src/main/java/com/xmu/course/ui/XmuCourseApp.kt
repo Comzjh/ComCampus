@@ -56,6 +56,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import com.xmu.course.ui.settings.rememberCourseReminderStatus
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.Lifecycle
@@ -453,16 +454,17 @@ fun XmuCourseApp(
         AppDestination.Home.route
     }
 
+    val reminderStatus by rememberCourseReminderStatus()
     val navController = rememberNavController()
     val hazeState = remember { HazeState() }
     val navigationSurfaceColor = MaterialTheme.colorScheme.surface
     val navigationGlassStyle = remember(navigationSurfaceColor) {
         HazeStyle(
             backgroundColor = navigationSurfaceColor,
-            tint = HazeTint(navigationSurfaceColor.copy(alpha = 0.72f)),
+            tint = HazeTint(navigationSurfaceColor.copy(alpha = 0.88f)),
             blurRadius = 20.dp,
-            noiseFactor = 0.05f,
-            fallbackTint = HazeTint(navigationSurfaceColor.copy(alpha = 0.78f)),
+            noiseFactor = 0.015f,
+            fallbackTint = HazeTint(navigationSurfaceColor.copy(alpha = 0.94f)),
         )
     }
     var openTodoEditorRequested by remember { mutableStateOf(false) }
@@ -685,7 +687,7 @@ fun XmuCourseApp(
                                 BadgedBox(
                                     badge = {
                                         if (destination == AppDestination.Profile &&
-                                            updateState.result is UpdateCheckResult.Available
+                                            (updateState.result is UpdateCheckResult.Available || reminderStatus.needsAttention)
                                         ) {
                                             Badge()
                                         }
@@ -709,7 +711,7 @@ fun XmuCourseApp(
                                     )
                                 }
                             },
-                            label = { Text(destination.label) },
+                            label = { Text(destination.label, style = MaterialTheme.typography.labelSmall) },
                             alwaysShowLabel = true,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -977,6 +979,7 @@ fun XmuCourseApp(
                     onSyncCompleted = {
                         // BUG-02：只有真实同步成功且首次消费时才回待办；失败/取消保持原页。
                         if (tronViewModel.claimSyncCompletion()) {
+                            todoViewModel.refreshCourseOptions()
                             navigateTab(AppDestination.Todo.route)
                         }
                     },

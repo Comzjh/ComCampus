@@ -82,6 +82,7 @@ class TimetableViewModelClockTest {
             viewModel.onForeground()
             runCurrent()
             assertEquals(4, viewModel.uiState.value.actualWeek)
+            assertEquals(4, viewModel.uiState.value.viewWeek)
             viewModel.onBackground()
         } finally {
             Dispatchers.resetMain()

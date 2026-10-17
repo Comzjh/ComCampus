@@ -7,12 +7,15 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.xmu.course.data.update.UpdateCheckResult
 import com.xmu.course.data.update.VersionComparator
+import com.xmu.course.ui.theme.AppShapes
 import java.io.File
 
 @Composable
@@ -29,6 +32,11 @@ fun UpdateDialog(
     val canDownload = update.apkUrl != null && update.apkDigest != null
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = AppShapes.Section,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        tonalElevation = 0.dp,
         title = { Text("发现新版本") },
         text = {
             Text(

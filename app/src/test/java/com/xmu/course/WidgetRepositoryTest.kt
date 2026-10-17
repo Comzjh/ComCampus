@@ -111,6 +111,36 @@ class WidgetRepositoryTest {
     }
 
     @Test
+    fun widgetDoesNotShowFirstWeekCoursesBeforeSemesterStarts() = runTest {
+        timetableRepo.setStartDate(timetableId, "2026-09-14")
+        insert("Synthetic first-week course", day = 1, start = 1, weeks = setOf(1))
+
+        val data = WidgetRepository.loadToday(
+            ApplicationProvider.getApplicationContext(),
+            today = LocalDate.parse("2026-09-07"),
+            db = db,
+        )
+
+        assertTrue("Widget reminders must be empty before the semester", data.courses.isEmpty())
+        assertEquals("Browsing week remains bounded", 1, data.week)
+    }
+
+    @Test
+    fun widgetDoesNotRepeatLastWeekCoursesAfterSemesterEnds() = runTest {
+        timetableRepo.setStartDate(timetableId, "2026-09-14")
+        insert("Synthetic last-week course", day = 1, start = 1, weeks = setOf(25))
+
+        val data = WidgetRepository.loadToday(
+            ApplicationProvider.getApplicationContext(),
+            today = LocalDate.parse("2027-03-08"),
+            db = db,
+        )
+
+        assertTrue("Widget reminders must be empty after the semester", data.courses.isEmpty())
+        assertEquals("Browsing week remains bounded", 25, data.week)
+    }
+
+    @Test
     fun nextCourseWidgetTest() = runTest {
         val monday = today.dayOfWeek.value
         insert("上午课", monday, 1)

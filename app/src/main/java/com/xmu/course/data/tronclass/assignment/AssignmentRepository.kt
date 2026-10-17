@@ -12,11 +12,14 @@ import com.xmu.course.data.todo.TodoDao
 import com.xmu.course.data.todo.model.TodoEntity
 import com.xmu.course.data.todo.model.TodoSource
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface AssignmentRepositoryContract {
     suspend fun syncAssignments(): TronResult<Int>
@@ -35,14 +38,20 @@ class AssignmentRepository(
     private val pageSize: Int = DEFAULT_PAGE_SIZE,
 ) : AssignmentRepositoryContract {
 
-    override suspend fun syncAssignments(): TronResult<Int> {
-        return withContext(Dispatchers.IO) {
+    private val syncMutex = Mutex()
+
+    override suspend fun syncAssignments(): TronResult<Int> = syncMutex.withLock {
+        // Keep the semester/course snapshot and its commit in the same refresh order.
+        withContext(Dispatchers.IO) {
             syncAssignmentsOnIo()
         }
     }
 
     private suspend fun syncAssignmentsOnIo(): TronResult<Int> {
-        val session = runCatching { sessionProvider.getSession() }.getOrNull()
+        val session = runCatching { sessionProvider.getSession() }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            null
+        }
             ?: return TronResult.Error(TronClassError.SessionMissing)
         if (session.isExpired(clock())) {
             return TronResult.Error(TronClassError.SessionMissing)
@@ -50,6 +59,8 @@ class AssignmentRepository(
 
         val semestersResponse = try {
             api.getMySemesters()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: IOException) {
             return TronResult.Error(TronClassError.NetworkError)
         } catch (_: Exception) {
@@ -70,6 +81,8 @@ class AssignmentRepository(
 
         val coursesResponse = try {
             api.getMyCourses()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: IOException) {
             return TronResult.Error(TronClassError.NetworkError)
         } catch (_: Exception) {
@@ -126,15 +139,20 @@ class AssignmentRepository(
                 }
                 val baseline = metadataDao.get()?.importBaselineAt
                     ?: error("TronClass import baseline was not persisted")
+                // Read inside this transaction so updates and first-import filtering agree.
+                val existingExternalIds = todoDao.getAll().asSequence()
+                    .filter { it.source == TodoSource.TRONCLASS.name }
+                    .mapNotNull { it.externalId }
+                    .toSet()
 
-                // Keep IDs from the complete successful API snapshot, including tasks that
-                // are filtered out by the first-import baseline below.
+                // IDs must come from the complete snapshot, before the first-import filter.
                 val assignmentIdsInSnapshot = assignments
                     .mapTo(mutableSetOf()) { it.assignment.externalId }
 
                 val eligibleAssignments = assignments
                     .filter { item ->
-                        item.assignment.deadline == null || item.assignment.deadline >= baseline
+                        item.assignment.externalId in existingExternalIds ||
+                            item.assignment.deadline == null || item.assignment.deadline >= baseline
                     }
                     .distinctBy { TodoSource.TRONCLASS.name to it.assignment.externalId }
                 val todos = eligibleAssignments.map { item ->
@@ -151,7 +169,18 @@ class AssignmentRepository(
                 }
 
                 if (baselineWasCreated) {
-                    todoDao.deleteTronClassTodosBefore(TodoSource.TRONCLASS.name, baseline)
+                    // The exam endpoint may run after homework creates the shared baseline.
+                    // Do not erase an existing exam before its own update can be evaluated.
+                    val incomingIds = todos.mapNotNullTo(mutableSetOf()) { it.externalId }
+                    val preservedIds = existingExternalIds.filter { it.startsWith("exam:") || it in incomingIds }
+                    if (preservedIds.isEmpty()) {
+                        todoDao.deleteTronClassTodosBefore(TodoSource.TRONCLASS.name, baseline)
+                    } else {
+                        // Do not delete a row being updated: upsert must retain its local state.
+                        todoDao.deleteTronClassTodosBeforeExceptExternalIds(
+                            TodoSource.TRONCLASS.name, baseline, preservedIds,
+                        )
+                    }
                 }
                 if (knownInactiveCourseIds.isNotEmpty()) {
                     todoDao.deleteTronClassTodosForCourses(
@@ -159,8 +188,7 @@ class AssignmentRepository(
                         knownInactiveCourseIds.toList(),
                     )
                 }
-                // All network and parsing work completed before this transaction. Reconcile
-                // only after the complete assignment snapshot has been written atomically.
+                // Commit and reconcile only after every course/page parsed successfully.
                 todoDao.upsertExternalTodos(todos)
                 if (activeCourseIds.isNotEmpty()) {
                     todoDao.getIncompleteExternalTodosForCourses(
@@ -185,15 +213,22 @@ class AssignmentRepository(
                 }
                 TronResult.Success(todos.size)
             }
-        }.getOrElse { TronResult.Error(TronClassError.StorageError) }
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            TronResult.Error(TronClassError.StorageError)
+        }
     }
 
     private suspend fun fetchAllPages(courseId: Long): TronResult<List<TronAssignment>> {
         val all = ArrayList<TronAssignment>()
         var page = 1
+        var expectedPages: Int? = null
+        var requiresPageNumber = false
         while (page <= MAX_PAGES) {
             val response = try {
                 api.getHomeworkActivities(courseId, page, pageSize)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: IOException) {
                 return TronResult.Error(TronClassError.NetworkError)
             } catch (_: Exception) {
@@ -207,13 +242,31 @@ class AssignmentRepository(
             }
             val body = response.body()
                 ?: return TronResult.Error(TronClassError.ResponseFormatChanged)
+            val reportedPage = body.page
+            val reportedPages = body.pages
+            val effectivePageSize = body.pageSize ?: pageSize
+            val emptyZeroPageSnapshot = page == 1 && reportedPages == 0 &&
+                body.homeworkActivities?.isEmpty() == true
+            if ((reportedPage != null && reportedPage != page) ||
+                (requiresPageNumber && reportedPage == null) ||
+                (reportedPages != null && !emptyZeroPageSnapshot && (reportedPages !in 1..MAX_PAGES || page > reportedPages)) ||
+                (expectedPages != null && reportedPages != expectedPages) ||
+                (effectivePageSize <= 0 && !emptyZeroPageSnapshot)
+            ) {
+                return TronResult.Error(TronClassError.ResponseFormatChanged)
+            }
+            requiresPageNumber = requiresPageNumber || reportedPage != null
+            expectedPages = reportedPages
             when (val parsed = parser.parse(body)) {
                 is TronResult.Error -> return parsed
                 is TronResult.Success -> {
-                    all += parsed.value.assignments
                     val totalPages = parsed.value.pages
+                    if (totalPages != null && totalPages > 1 && parsed.value.assignments.isEmpty()) {
+                        return TronResult.Error(TronClassError.ResponseFormatChanged)
+                    }
+                    all += parsed.value.assignments
                     if ((totalPages != null && page >= totalPages) ||
-                        (totalPages == null && parsed.value.assignments.size < pageSize)
+                        (totalPages == null && parsed.value.assignments.size < effectivePageSize)
                     ) {
                         return TronResult.Success(all)
                     }

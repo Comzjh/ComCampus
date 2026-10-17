@@ -19,6 +19,10 @@ interface TodoDao {
     @Update
     suspend fun update(todo: TodoEntity)
 
+    /** Only editor-owned fields are written; a concurrent checkbox change survives. */
+    @Update(entity = TodoEntity::class)
+    suspend fun updateEditableFields(edit: TodoEditableFields)
+
     @Delete
     suspend fun delete(todo: TodoEntity)
 
@@ -53,6 +57,17 @@ interface TodoDao {
             "AND deadline IS NOT NULL AND deadline < :baselineAt",
     )
     suspend fun deleteTronClassTodosBefore(source: String, baselineAt: Long)
+
+    @Query(
+        "DELETE FROM todo_items WHERE source = :source " +
+            "AND deadline IS NOT NULL AND deadline < :baselineAt " +
+            "AND (externalId IS NULL OR externalId NOT IN (:preservedExternalIds))",
+    )
+    suspend fun deleteTronClassTodosBeforeExceptExternalIds(
+        source: String,
+        baselineAt: Long,
+        preservedExternalIds: List<String>,
+    )
 
     @Query(
         "DELETE FROM todo_items WHERE source = :source AND courseId IN (:courseIds)",
@@ -106,3 +121,18 @@ interface TodoDao {
         }
     }
 }
+
+/** Room partial update: excludes completion and external-sync metadata. */
+data class TodoEditableFields(
+    val id: Long,
+    val title: String,
+    val description: String,
+    val deadline: Long?,
+    val courseId: Long?,
+    val source: String,
+    val updatedTime: Long,
+)
+
+internal fun TodoEntity.editableFields() = TodoEditableFields(
+    id, title, description, deadline, courseId, source, updatedTime,
+)

@@ -64,7 +64,7 @@ class TimetableSettingsViewModel(application: Application) : AndroidViewModel(ap
     /** 修改配置（copy 组装整份保存，Room Flow 自动刷新课表页）。 */
     fun update(transform: (TimetableConfig) -> TimetableConfig) {
         val config = _uiState.value.config ?: return
-        viewModelScope.launch { timetableRepo.updateConfig(transform(config)) }
+        viewModelScope.launch { timetableRepo.updateConfig(config.timetableId, transform) }
     }
 
     /** 修改全局网格线开关（保持原 DisplaySettings 存储，避免不必要数据库迁移）。 */

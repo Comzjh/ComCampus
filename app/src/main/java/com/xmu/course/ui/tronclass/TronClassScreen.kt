@@ -9,31 +9,32 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -235,14 +236,14 @@ private fun AuthenticatedContent(
                     if (state.screenState == TronClassScreenState.Syncing) {
                         CircularProgressIndicator(
                             strokeWidth = 2.dp,
-                            modifier = Modifier.padding(end = AppSpacing.Sm),
+                            modifier = Modifier.padding(end = AppSpacing.Sm).size(20.dp),
                         )
                     } else {
                         Icon(Icons.Filled.Sync, contentDescription = null)
                     }
                     Text("同步课程", modifier = Modifier.padding(start = AppSpacing.Sm))
                 }
-                OutlinedButton(onClick = onLogout) {
+                TextButton(onClick = onLogout) {
                     Icon(Icons.Filled.Logout, contentDescription = null)
                     Text("退出登录", modifier = Modifier.padding(start = AppSpacing.Sm))
                 }
@@ -281,6 +282,13 @@ private fun AuthenticatedContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                if (state.lastAssignmentSyncCount == null) {
+                    Text(
+                        "未开启自动导入畅课作业，本次仅同步课程；可在待办页手动刷新。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
         if (semesterOptions.isNotEmpty()) {
@@ -292,8 +300,9 @@ private fun AuthenticatedContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Box(modifier = Modifier.padding(start = AppSpacing.Sm)) {
-                        OutlinedButton(onClick = { semesterMenuExpanded = true }) {
+                        TextButton(onClick = { semesterMenuExpanded = true }) {
                             Text(selectedSemester ?: "全部学期")
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
                         }
                         DropdownMenu(
                             expanded = semesterMenuExpanded,
@@ -358,16 +367,14 @@ private fun TronCourseCard(course: TronCourseUiModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = AppShapes.Card,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.padding(AppSpacing.CardPadding),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
         ) {
             Text(course.name, style = MaterialTheme.typography.titleMedium)
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                modifier = Modifier.padding(vertical = AppSpacing.Xs),
-            )
             Text(
                 "教师：${course.instructor.ifBlank { "未提供" }}",
                 style = MaterialTheme.typography.bodySmall,

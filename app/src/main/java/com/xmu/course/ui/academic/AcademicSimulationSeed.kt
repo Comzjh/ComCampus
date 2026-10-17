@@ -56,6 +56,8 @@ data class SimulationBaseline(
     val pendingCreditCourseCount: Int,
     /** 数据更新时间（本机刷新时间戳，非学校统计时间）。 */
     val dataUpdatedText: String?,
+    /** Unrounded GPA for further weighting; the visible baseline still uses gpaText. */
+    val calculationGpaText: String? = gpaText,
 )
 
 /** 一次模拟会话的只读起点。 */
@@ -84,6 +86,9 @@ data class AcademicSimulationSeed(
     /** 可作为计算起点的 GPA 文本；未确认/数据不足时为 null。 */
     val usableGpaText: String?
         get() = baseline?.takeIf { it.gpaStatus == SimulationGpaStatus.COMPUTED }?.gpaText
+
+    val usableCalculationGpaText: String?
+        get() = baseline?.takeIf { it.gpaStatus == SimulationGpaStatus.COMPUTED }?.calculationGpaText
 
     /** 基线是否足以直接开始模拟。 */
     val canSimulate: Boolean
@@ -149,6 +154,7 @@ object AcademicSimulationSeedBuilder {
                         .atZone(ZoneId.systemDefault())
                         .format(UPDATED_AT_FORMAT)
                 },
+                calculationGpaText = (computed as? JwDerivedGpa.Result.Computed)?.calculationGpaText,
             )
         }
         return AcademicSimulationSeed(

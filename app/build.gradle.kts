@@ -7,8 +7,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val appVersionName = providers.gradleProperty("appVersionName").orElse("0.9.6").get()
-val appVersionCode = providers.gradleProperty("appVersionCode").orElse("96").get().toInt()
+val appVersionName = providers.gradleProperty("appVersionName").orElse("0.9.7").get()
+val appVersionCode = providers.gradleProperty("appVersionCode").orElse("97").get().toInt()
 
 // 发布签名只从本机 keystore.properties 读取，文件已加入 .gitignore。
 val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
@@ -117,8 +117,8 @@ dependencies {
 
     // Widget: Jetpack Glance AppWidget。
     implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.glance.material3)
 
     // 数据层：Phase 3/4 启用（依赖先行声明，避免反复改构建文件）
     implementation(libs.androidx.room.runtime)
@@ -139,6 +139,9 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.androidx.glance.testing)
+    testImplementation(libs.androidx.glance.appwidget.testing)
+    testImplementation(libs.androidx.work.testing)
 }
 
 

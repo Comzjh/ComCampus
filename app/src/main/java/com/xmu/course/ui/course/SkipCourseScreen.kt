@@ -1,12 +1,14 @@
 package com.xmu.course.ui.course
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,11 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xmu.course.XmuCourseApplication
 import com.xmu.course.domain.Course
+import com.xmu.course.ui.theme.AppShapes
+import com.xmu.course.ui.theme.AppSpacing
 
 /**
  * 翘课设置：多选当前课表课程，保存为本地显示状态。
@@ -64,13 +70,15 @@ fun SkipCourseScreen(
             )
         },
         bottomBar = {
-            Surface {
+            Surface(color = MaterialTheme.colorScheme.background) {
                 Button(
                     onClick = { viewModel.saveSkippedCourses(selected) },
                     enabled = state.courses.isNotEmpty(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = AppSpacing.PagePadding, vertical = AppSpacing.Md)
+                        .heightIn(min = 48.dp),
+                    shape = AppShapes.Button,
                 ) {
                     Text("保存（已选 ${selected.size} 门）")
                 }
@@ -93,17 +101,20 @@ fun SkipCourseScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(AppSpacing.PagePadding),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
         ) {
             items(state.courses, key = { it.id }) { course ->
                 val checked = course.id in selected
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .clip(AppShapes.Card)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
                         .clickable {
                             selected = if (checked) selected - course.id else selected + course.id
-                        },
+                        }
+                        .padding(start = AppSpacing.Xs, end = AppSpacing.Lg, top = AppSpacing.Md, bottom = AppSpacing.Md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(
@@ -121,8 +132,8 @@ fun SkipCourseScreen(
 
 @Composable
 private fun SkipCourseLabel(course: Course) {
-    Column(Modifier.padding(start = 4.dp)) {
-        Text(course.name, style = MaterialTheme.typography.titleSmall)
+    Column(Modifier.padding(start = AppSpacing.Xs), verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
+        Text(course.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(
             skipCourseScheduleLabel(course),
             style = MaterialTheme.typography.bodySmall,

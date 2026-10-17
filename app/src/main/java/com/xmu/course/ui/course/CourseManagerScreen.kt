@@ -3,16 +3,15 @@ package com.xmu.course.ui.course
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -38,10 +37,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -103,12 +104,14 @@ fun CourseManagerScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("课程管理")
+                        Text("课程管理", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         state.timetable?.let {
                             Text(
                                 it.name,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
@@ -117,10 +120,15 @@ fun CourseManagerScreen(
                     TextButton(
                         onClick = onOpenSkipCourses,
                         enabled = state.courses.isNotEmpty(),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     ) { Text("翘课设置") }
                     TextButton(
                         onClick = { showClearConfirm = true },
                         enabled = state.courses.isNotEmpty(),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
                     ) { Text("清空") }
                 },
                 navigationIcon = {
@@ -131,7 +139,12 @@ fun CourseManagerScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                shape = AppShapes.Card,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "添加课程")
             }
         },
@@ -148,16 +161,24 @@ fun CourseManagerScreen(
             ) {
                 Text(
                     "暂无课程\n点击右下角 + 手动添加，或去导入页保存课表",
+                    modifier = Modifier.padding(AppSpacing.PagePadding),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
 
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                contentPadding = innerPadding,
-                modifier = Modifier.padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(
+                    start = AppSpacing.PagePadding,
+                    end = AppSpacing.PagePadding,
+                    top = innerPadding.calculateTopPadding() + AppSpacing.Md,
+                    bottom = innerPadding.calculateBottomPadding() + 88.dp,
+                ),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Md),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Md),
             ) {
                 items(state.courses, key = { it.id }) { course ->
                     ManagedCourseCard(
@@ -263,7 +284,7 @@ private fun ManagedCourseCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            Modifier.padding(AppSpacing.CardPadding),
+            Modifier.padding(AppSpacing.Md),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -277,11 +298,12 @@ private fun ManagedCourseCard(
                                 ?: MaterialTheme.colorScheme.primary,
                         ),
                 )
-                Spacer(Modifier.width(AppSpacing.Xs))
+                Spacer(Modifier.width(AppSpacing.Sm))
                 Text(
                     course.name,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
@@ -358,7 +380,15 @@ private fun CourseEditSheet(
     var note by remember { mutableStateOf(course.note) }
     var color by remember { mutableStateOf(course.color.ifBlank { DEFAULT_COURSE_COLOR }) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    )
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = AppShapes.SheetTop,
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -366,15 +396,15 @@ private fun CourseEditSheet(
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .testTag("course_edit_scroll_content")
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = AppSpacing.PagePadding)
                 .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Md),
         ) {
-            Text("编辑课程", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(name, { name = it }, label = { Text("课程名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(note, { note = it }, label = { Text("备注") }, modifier = Modifier.fillMaxWidth())
+            Text("编辑课程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            OutlinedTextField(name, { name = it }, label = { Text("课程名称") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+            OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+            OutlinedTextField(location, { location = it }, label = { Text("地点") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
+            OutlinedTextField(note, { note = it }, label = { Text("备注") }, modifier = Modifier.fillMaxWidth(), shape = AppShapes.Button, colors = fieldColors)
             CourseColorSelector(
                 selectedColor = color,
                 onColorChange = { color = it },
@@ -385,7 +415,8 @@ private fun CourseEditSheet(
                 Button(
                     onClick = { onSave(name, teacher, location, note, color) },
                     enabled = name.isNotBlank(),
-                    modifier = Modifier.testTag("course_edit_save"),
+                    shape = AppShapes.Button,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("course_edit_save"),
                 ) { Text("保存") }
             }
         }
