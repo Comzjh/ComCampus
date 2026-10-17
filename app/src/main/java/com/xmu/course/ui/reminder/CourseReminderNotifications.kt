@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.xmu.course.MainActivity
 import com.xmu.course.R
@@ -20,17 +21,38 @@ fun buildCourseReminderIntent(context: Context, occurrence: CourseReminderOccurr
     }
 
 object CourseReminderNotifications {
-    const val CHANNEL_ID = "course_reminders"
+    const val CHANNEL_ID = "course_reminders_quiet_v2"
+    internal const val LEGACY_CHANNEL_ID = "course_reminders"
     internal const val NOTIFICATION_ID = 30
 
     fun ensureChannel(context: Context) {
-        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "课前提醒", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "上课前30分钟提醒课程、开始时间和地点"
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        // Channel sound/importance cannot be reliably changed after creation. Migrate once
+        // to a quiet channel, then leave subsequent user choices completely untouched.
+        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val legacyBlocked = manager.getNotificationChannel(LEGACY_CHANNEL_ID)
+            ?.importance == NotificationManager.IMPORTANCE_NONE
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "课前提醒", if (legacyBlocked) {
+                NotificationManager.IMPORTANCE_NONE
+            } else {
+                NotificationManager.IMPORTANCE_LOW
+            }).apply {
+                description = "课前30分钟显示课程、时间和地点；默认静默，声音和震动可自行开启"
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                setBypassDnd(false)
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             },
         )
     }
+
+    fun settingsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL_ID)
+        }
 
     internal fun build(
         context: Context,
@@ -57,7 +79,7 @@ object CourseReminderNotifications {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(content)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .setAutoCancel(true)

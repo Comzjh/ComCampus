@@ -36,6 +36,21 @@ class CourseReminderSettingsSectionTest {
     @After fun teardown() { composeRule.mainClock.autoAdvance = true; Dispatchers.resetMain() }
 
     @Test
+    fun soundPreferencesRequireAnExplicitUserTap() {
+        var opens = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CourseReminderSectionContent(CourseReminderStatus(true, true, true), {}, {}, {},
+                    onAlertPreferences = { opens++ })
+            }
+        }
+        composeRule.onNodeWithText("默认静默；需要声音或震动时在系统中开启").assertExists()
+        assertEquals(0, opens)
+        composeRule.onNodeWithTag("course_reminder_alert_preferences").performClick()
+        assertEquals(1, opens)
+    }
+
+    @Test
     fun missingPermissionsArePassiveUntilTheUserTapsTheirOwnSetting() {
         var notificationRequests = 0
         var exactRequests = 0

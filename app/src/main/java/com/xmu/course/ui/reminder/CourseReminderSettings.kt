@@ -50,6 +50,7 @@ object CourseReminderPermissions {
         ) return false
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
         val manager = context.getSystemService(NotificationManager::class.java) ?: return false
+        CourseReminderNotifications.ensureChannel(context)
         return manager.getNotificationChannel(CourseReminderNotifications.CHANNEL_ID)
             ?.importance != NotificationManager.IMPORTANCE_NONE
     }

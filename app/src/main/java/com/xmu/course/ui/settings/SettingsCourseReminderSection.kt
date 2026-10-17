@@ -47,6 +47,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.xmu.course.ui.components.AppGroupedSection
 import com.xmu.course.ui.components.AppNavigationRow
+import com.xmu.course.ui.reminder.CourseReminderNotifications
 import com.xmu.course.ui.reminder.CourseReminderPermissions
 import com.xmu.course.ui.reminder.CourseReminderScheduler
 import com.xmu.course.ui.reminder.CourseReminderSettings
@@ -135,6 +136,10 @@ internal fun SettingsCourseReminderSection(onOpenTimetableManager: () -> Unit = 
                 })
             }
         },
+        onAlertPreferences = {
+            CourseReminderNotifications.ensureChannel(context)
+            context.startActivity(CourseReminderNotifications.settingsIntent(context))
+        },
         onExactPermission = {
             if (Build.VERSION.SDK_INT >= 31) {
                 context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
@@ -151,6 +156,7 @@ internal fun CourseReminderSectionContent(
     onNotificationPermission: () -> Unit,
     onExactPermission: () -> Unit,
     onOpenTimetableManager: () -> Unit = {},
+    onAlertPreferences: () -> Unit = {},
 ) {
     AppGroupedSection(title = "上课提醒", modifier = Modifier.testTag("course_reminder_section")) {
         Row(
@@ -162,7 +168,7 @@ internal fun CourseReminderSectionContent(
         ) {
             Column(Modifier.weight(1f).padding(end = AppSpacing.Md)) {
                 Text("课前 30 分钟提醒", style = MaterialTheme.typography.bodyLarge)
-                Text("显示课程、上课时间和已填写的地点", style = MaterialTheme.typography.bodySmall,
+                Text("默认静默显示课程、上课时间和已填写的地点", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(status.enabled, onCheckedChange = null, modifier = Modifier.clearAndSetSemantics {})
@@ -176,6 +182,13 @@ internal fun CourseReminderSectionContent(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
                 ReminderPermissionRow("允许准时提醒", "在系统中允许“闹钟和提醒”", "course_reminder_exact_permission", onExactPermission)
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            AppNavigationRow(
+                title = "提醒声音与震动",
+                description = "默认静默；需要声音或震动时在系统中开启",
+                onClick = onAlertPreferences,
+                modifier = Modifier.testTag("course_reminder_alert_preferences"),
+            )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
             AppNavigationRow(
                 title = "自建课表日期",
