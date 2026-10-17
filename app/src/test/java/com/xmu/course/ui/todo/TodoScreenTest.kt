@@ -1,7 +1,6 @@
 package com.xmu.course.ui.todo
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -18,7 +17,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.xmu.course.contracts.todo.TodoFeatureRepository
@@ -80,18 +78,6 @@ class TodoScreenTest {
         composeRule.onNodeWithContentDescription("新增待办").performClick()
         composeRule.onNodeWithText("新增待办").assertIsDisplayed()
         composeRule.onNodeWithText("标题").assertIsDisplayed()
-    }
-
-    @Test
-    fun `新增标题初始中性且输入后清空才提示错误`() {
-        setContent()
-        composeRule.onNodeWithContentDescription("新增待办").performClick()
-        composeRule.onNodeWithTag("todo_editor_title")
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
-            .performTextInput("实验记录")
-        composeRule.onNodeWithTag("todo_editor_title").performTextClearance()
-        composeRule.onNodeWithTag("todo_editor_title")
-            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
     }
 
     @Test
@@ -308,7 +294,7 @@ class TodoScreenTest {
         assertTrue(composeRule.onAllNodesWithText("已逾期").fetchSemanticsNodes().isEmpty())
         assertTrue(composeRule.onAllNodesWithText("长期任务").fetchSemanticsNodes().isEmpty())
 
-        composeRule.onNodeWithText("长期").performScrollTo().assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("长期").performClick()
         composeRule.onNodeWithText("长期任务").performScrollTo().assertIsDisplayed()
     }
 

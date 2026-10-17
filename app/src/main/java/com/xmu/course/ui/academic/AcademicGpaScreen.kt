@@ -1,6 +1,5 @@
 package com.xmu.course.ui.academic
 
-import com.xmu.course.ui.theme.action
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.xmu.course.ui.components.AppTopBar as TopAppBar
@@ -99,7 +98,7 @@ fun AcademicGpaScreen(
                                 "待确认，暂不出数",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.action,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.testTag("academic_gpa_pending"),
                             )
                             Text(

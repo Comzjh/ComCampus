@@ -4,24 +4,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
@@ -41,7 +37,7 @@ private val PALETTE = listOf(
     Color(0xFFA79FE1), Color(0xFFF49BC1), Color(0xFF8FBCFA), Color(0xFFE8C877),
 )
 
-/** 课程卡底色混合比例；只用于底色，不淡化文字或点击目标。 */
+/** 课程卡最终透明度；翘课只影响视觉，不影响布局。 */
 internal fun courseCardRenderAlpha(
     isCurrentWeek: Boolean,
     configAlpha: Float,
@@ -57,20 +53,6 @@ internal fun courseCardColor(course: Course): Color {
             .getOrNull()?.let { return it }
     }
     return PALETTE[((course.name.hashCode() % PALETTE.size) + PALETTE.size) % PALETTE.size]
-}
-
-/** 在稳定主题底上混合底色，不写回用户颜色，不让壁纸降低文字对比。 */
-internal fun courseCardContainerColor(
-    course: Course,
-    surface: Color,
-    isCurrentWeek: Boolean,
-    cardAlpha: Float,
-    isSkipped: Boolean,
-): Color {
-    val tint = courseCardColor(course).desaturateForRender()
-    return tint.copy(
-        alpha = tint.alpha * courseCardRenderAlpha(isCurrentWeek, cardAlpha, isSkipped),
-    ).compositeOver(surface)
 }
 
 /** 根据卡片底色选择对比度更高的前景色，兼顾内置色与用户自定义色。 */
@@ -122,7 +104,7 @@ private fun textAlign(value: TextHorizontalAlignment): TextAlign = when (value) 
 }
 
 /**
- * 网格中的课程卡片：高密度彩色底与独立的高对比文字。
+ * 网格中的课程卡片（超级课程表风格：高密度、彩色底、白字）。
  * 时间由左侧独立时间轴展示；卡片只显示课程名、地点、教师与备注。
  */
 @Composable
@@ -142,9 +124,7 @@ fun CourseCard(
     compact: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val container = courseCardContainerColor(
-        course, MaterialTheme.colorScheme.surface, isCurrentWeek, cardAlpha, isSkipped,
-    )
+    val container = (if (isSkipped) Color(0xFF8A8A8A) else courseCardColor(course)).desaturateForRender()
     val foreground = courseCardForegroundColor(container)
     // 响应式布局只改变卡片宽度，不应把正常课程的标题永久压成 8sp。
     // 保留 compact 参数兼容新版调用方，但沿用稳定版的字号上下限。
@@ -154,83 +134,43 @@ fun CourseCard(
     val arrangement = verticalAlignment(textVerticalAlignment)
     val textAlign = textAlign(textHorizontalAlignment)
 
-    BoxWithConstraints(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .clip(RoundedCornerShape(cornerRadius.dp))
-            .background(container)
-            .border(
-                if (!isCurrentWeek || isSkipped) 1.dp else 0.5.dp,
-                foreground.copy(alpha = if (!isCurrentWeek || isSkipped) 0.28f else 0.10f),
-                RoundedCornerShape(cornerRadius.dp),
-            )
-            .semantics {
-                contentDescription = listOfNotNull(
-                    cleanImportedCourseName(course.name),
-                    course.location.takeIf { showLocation && it.isNotBlank() },
-                    course.teacher.takeIf { showTeacher && it.isNotBlank() },
-                ).joinToString("，")
-                stateDescription = listOfNotNull(
-                    if (!isCurrentWeek) "非本周" else null,
-                    if (isSkipped) "已标记翘课" else null,
-                ).joinToString("，")
-            }
-            .clickable(onClickLabel = "查看课程详情", onClick = onClick)
-            .padding(horizontal = 3.dp, vertical = 4.dp),
-    ) {
-        val hasLocation = showLocation && course.location.isNotBlank()
-        val hasTeacher = showTeacher && course.teacher.isNotBlank()
-        val status = listOfNotNull(
-            if (!isCurrentWeek) "非本周" else null,
-            if (isSkipped) "翘课" else null,
-        ).joinToString(" · ")
-        val secondaryLineHeight = with(LocalDensity.current) { (secondaryText + 3).sp.toDp() }
-        val titleLineHeight = with(LocalDensity.current) { (titleTextSize + 3).sp.toDp() }
-        // The course name gets the first real line, including at large system font sizes.
-        // Metadata remains available in the full card description and the existing details.
-        val showLocationLine = hasLocation && maxHeight >= titleLineHeight + secondaryLineHeight + 1.dp
-        val showTeacherLine = hasTeacher && maxHeight >= titleLineHeight +
-            secondaryLineHeight * (if (showLocationLine) 2 else 1) + (if (showLocationLine) 2 else 1).dp
-        val fieldCount = (if (showLocationLine) 1 else 0) + (if (showTeacherLine) 1 else 0)
-        val titleBudget = (maxHeight - secondaryLineHeight * fieldCount - fieldCount.dp)
-            .coerceAtLeast(minOf(titleLineHeight, maxHeight))
-        val titleLines = (titleBudget / titleLineHeight).toInt()
-            .coerceIn(1, if (course.duration <= 1) 2 else 3)
-        val usedHeight = titleLineHeight * titleLines + secondaryLineHeight * fieldCount + fieldCount.dp
-        val showStatus = status.isNotEmpty() && maxHeight >= usedHeight + secondaryLineHeight + 1.dp
-        val showNoteLine = showNote && !compact && course.note.isNotBlank() &&
-            maxHeight >= usedHeight + secondaryLineHeight * (if (showStatus) 2 else 1) + 2.dp
-        Column(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(1.dp, arrangement),
-            horizontalAlignment = alignment,
-        ) {
+            .background(container, RoundedCornerShape(cornerRadius.dp))
+            .border(0.5.dp, foreground.copy(alpha = 0.10f), RoundedCornerShape(cornerRadius.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+            .alpha(courseCardRenderAlpha(isCurrentWeek, cardAlpha, isSkipped)),
+        verticalArrangement = Arrangement.spacedBy(1.dp, arrangement),
+        horizontalAlignment = alignment,
+        content = {
             Text(
                 // 兼容旧数据库：即使课程是在名称清洗上线前导入的，课表卡片也不再显示班号。
                 text = cleanImportedCourseName(course.name),
                 color = foreground,
                 fontSize = titleTextSize.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = titleLines,
+                maxLines = if (course.duration <= 1) 2 else 3,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = (titleTextSize + 1).sp,
                 textAlign = textAlign,
-                modifier = Modifier.heightIn(max = titleBudget).testTag("course_card_name"),
+                modifier = Modifier.testTag("course_card_name"),
             )
-            if (showLocationLine) {
+            if (showLocation && course.location.isNotBlank()) {
                 Text(
                     text = "@" + course.location,
                     color = foreground,
                     fontSize = secondaryText.sp,
                     lineHeight = (secondaryText + 1).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 3,
+                    overflow = TextOverflow.Visible,
                     textAlign = textAlign,
                     modifier = Modifier.testTag("course_card_location"),
                 )
             }
-            if (showTeacherLine) {
+            if (showTeacher && course.teacher.isNotBlank()) {
                 // 教师始终出现；窄卡里可以省略，但不允许整块消失。
                 Text(
                     text = course.teacher,
@@ -243,28 +183,22 @@ fun CourseCard(
                     modifier = Modifier.testTag("course_card_teacher"),
                 )
             }
-            if (showStatus) {
-                Text(
-                    text = status,
-                    color = foreground,
-                    fontSize = secondaryText.sp,
-                    lineHeight = (secondaryText + 1).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = textAlign,
-                )
+            // 空间不足时隐藏顺序：备注；地点/教师始终保留。
+            if (showNote && course.note.isNotBlank()) {
+                var noteOverflowed by remember(course.id, course.note) { mutableStateOf(false) }
+                if (!noteOverflowed) {
+                    Text(
+                        text = course.note,
+                        color = foreground,
+                        fontSize = secondaryText.sp,
+                        lineHeight = (secondaryText + 1).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = textAlign,
+                        onTextLayout = { if (it.hasVisualOverflow) noteOverflowed = true },
+                    )
+                }
             }
-            if (showNoteLine) {
-                Text(
-                    text = course.note,
-                    color = foreground,
-                    fontSize = secondaryText.sp,
-                    lineHeight = (secondaryText + 1).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = textAlign,
-                )
-            }
-        }
-    }
+        },
+    )
 }

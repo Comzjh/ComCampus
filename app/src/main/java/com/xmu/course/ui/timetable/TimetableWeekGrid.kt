@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -20,13 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -34,14 +31,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import com.xmu.course.ui.theme.action
 import com.xmu.course.data.TimetableAxisStyle
 import com.xmu.course.ui.tutorial.TutorialTargetKey
 import com.xmu.course.ui.tutorial.tutorialTarget
@@ -79,94 +72,49 @@ internal fun TimetableWeekGrid(
     val dayNames = mapOf(7 to "周日", 1 to "周一", 2 to "周二", 3 to "周三", 4 to "周四", 5 to "周五", 6 to "周六")
     val dates = remember(startDate, week, dayColumns) {
         dayColumns.associateWith { day ->
-            TimetableCalendar.dateFor(startDate, week, day)
+            TimetableCalendar.formatMonthDay(TimetableCalendar.dateFor(startDate, week, day))
         }
     }
     val today = LocalDate.now()
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val density = LocalDensity.current
-        val textMeasurer = rememberTextMeasurer()
         val metrics = calculateTimetableLayoutMetrics(maxWidth, config.courseHeight.dp)
-        val axisTypography = timeAxisTypography(
-            metrics.cellHeight.value, axisStyle.periodFontSp, axisStyle.timeFontSp,
-        )
-        // Scale the space with the text, so full start/end times keep their own row.
-        val numberSize = textMeasurer.measure(
-            text = sectionCount.toString(),
-            style = LocalTextStyle.current.copy(
-                fontSize = axisTypography.numberSizeSp.sp,
-                lineHeight = axisTypography.numberLineHeightSp.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
-        ).size
-        val timeSize = textMeasurer.measure(
-            text = "23:59",
-            style = LocalTextStyle.current.copy(
-                fontSize = axisTypography.timeSizeSp.sp,
-                lineHeight = axisTypography.timeLineHeightSp.sp,
-            ),
-        ).size
-        val axisContentWidth = maxOf(numberSize.width, if (config.showFullTimeAxis) timeSize.width else 0)
-        val axisContentHeight = numberSize.height + if (config.showFullTimeAxis) timeSize.height * 2 else 0
-        val timeAxisWidth = maxOf(metrics.timeAxisWidth, with(density) { axisContentWidth.toDp() } + 8.dp)
-        val cellHeight = maxOf(metrics.cellHeight, with(density) { axisContentHeight.toDp() } + 4.dp)
+        val cellHeight = metrics.cellHeight
+        val timeAxisWidth = metrics.timeAxisWidth
         val columnWidth = ((maxWidth - timeAxisWidth) / dayColumns.size).coerceAtLeast(1.dp)
-        // 日期栏按系统字号自然增高；不通过压缩字号适配固定容器。
-        val weekdayFontSp = axisStyle.weekdayFontSp
-        val dateFontSp = axisStyle.dateFontSp
-        val dateStyle = LocalTextStyle.current.copy(fontSize = (dateFontSp - 1).sp, fontWeight = FontWeight.Bold)
-        val dateWidth = dates.values.maxOfOrNull {
-            textMeasurer.measure(TimetableCalendar.formatMonthDay(it), style = dateStyle).size.width
-        } ?: 0
-        // Compact calendar headers show the day and put its month in the axis corner.
-        // No date may wrap halfway through a number at narrow widths or large fonts.
-        val compactDates = with(density) { dateWidth.toDp() } + 8.dp > columnWidth
-        val shortWeekdays = with(density) {
-            textMeasurer.measure(
-                "周一", style = LocalTextStyle.current.copy(fontSize = weekdayFontSp.sp),
-            ).size.width.toDp()
-        } > columnWidth
-        val months = dates.values.filterNotNull().map { it.monthValue }.distinct()
+        val axisTypography = timeAxisTypography(
+            cellHeight.value, axisStyle.periodFontSp, axisStyle.timeFontSp,
+        )
+        // 星期栏/日期栏字号独立可调；表头高度不足时两栏按同一比例回缩，防止裁切。
+        val (weekdayFontSp, dateFontSp) = fitDateHeaderFonts(
+            metrics.headerHeight.value, axisStyle.weekdayFontSp, axisStyle.dateFontSp,
+            LocalDensity.current.fontScale,
+        )
         Column(Modifier.fillMaxSize()) {
-            // 星期和时间轴使用稳定主题底色，任意壁纸下默认文字仍清晰。
+            // 只做轻微可读性遮罩，避免星期日期行与背景割裂成一整块面板。
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = TIMETABLE_HEADER_OVERLAY_ALPHA)),
             ) {
-                Box(
-                    Modifier.width(timeAxisWidth).heightIn(min = metrics.headerHeight).padding(vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (compactDates) {
-                        Text(
-                            text = months.joinToString("\n") { "${it}月" },
-                            fontSize = 11.sp,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+                Box(Modifier.width(timeAxisWidth).height(metrics.headerHeight))
                 dayColumns.forEach { day ->
                     val isToday = TimetableCalendar.isToday(startDate, week, day, today)
                     Column(
                         modifier = Modifier
                             .width(columnWidth)
-                            .heightIn(min = metrics.headerHeight)
+                            .height(metrics.headerHeight)
                             .padding(vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
-                            text = dayNames.getValue(day).let { if (shortWeekdays) it.removePrefix("周") else it },
-                            softWrap = false,
-                            maxLines = 1,
+                            text = dayNames.getValue(day),
                             textAlign = TextAlign.Center,
                             fontSize = weekdayFontSp.sp,
                             lineHeight = (weekdayFontSp * 1.25f).sp,
                             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isToday) MaterialTheme.colorScheme.action
+                            color = if (isToday) MaterialTheme.colorScheme.primary
                             else axisTextColor(
                                 axisStyle.weekdayColor,
                                 MaterialTheme.colorScheme.onSurfaceVariant,
@@ -175,24 +123,17 @@ internal fun TimetableWeekGrid(
                         // Apple Calendar 风格：今天日期用实心胶囊徽章标识，替代整列底色。
                         Box(
                             modifier = Modifier
+                                .height((dateFontSp + 7).dp)
                                 .clip(RoundedCornerShape(percent = 50))
                                 .background(
                                     if (isToday) MaterialTheme.colorScheme.primary
                                     else Color.Transparent,
                                 )
-                                .padding(horizontal = if (compactDates) 0.dp else 4.dp, vertical = 2.dp),
+                                .padding(horizontal = 6.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = if (compactDates) dates[day]?.dayOfMonth?.toString().orEmpty()
-                                else TimetableCalendar.formatMonthDay(dates[day]),
-                                softWrap = false,
-                                maxLines = 1,
-                                modifier = Modifier.testTag("timetable_date_$day").semantics {
-                                    contentDescription = dates[day]?.let {
-                                        "${it.monthValue}月${it.dayOfMonth}日，${dayNames.getValue(day)}"
-                                    }.orEmpty()
-                                },
+                                text = dates[day].orEmpty(),
                                 textAlign = TextAlign.Center,
                                 fontSize = (dateFontSp - 1).sp,
                                 lineHeight = ((dateFontSp - 1) * 1.2f).sp,
@@ -226,7 +167,7 @@ internal fun TimetableWeekGrid(
                     Column(
                         Modifier
                             .width(timeAxisWidth)
-                            .background(MaterialTheme.colorScheme.surface),
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = TIMETABLE_HEADER_OVERLAY_ALPHA)),
                     ) {
                         val axisLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
                         repeat(sectionCount) { index ->
@@ -234,7 +175,6 @@ internal fun TimetableWeekGrid(
                                 Modifier
                                     .height(cellHeight)
                                     .fillMaxWidth()
-                                    .testTag("timetable_axis_cell_${index + 1}")
                                     .drawBehind {
                                         if (showGrid) {
                                             drawLine(
@@ -253,9 +193,6 @@ internal fun TimetableWeekGrid(
                                 ) {
                                     Text(
                                         text = "${index + 1}",
-                                        modifier = Modifier.testTag("timetable_axis_number_${index + 1}"),
-                                        softWrap = false,
-                                        maxLines = 1,
                                         fontSize = axisTypography.numberSizeSp.sp,
                                         lineHeight = axisTypography.numberLineHeightSp.sp,
                                         fontWeight = FontWeight.SemiBold,
@@ -268,9 +205,6 @@ internal fun TimetableWeekGrid(
                                         val parts = TimeTableConfig.timeOf(index + 1).split("-")
                                         Text(
                                             text = parts.getOrNull(0) ?: "",
-                                            modifier = Modifier.testTag("timetable_axis_start_${index + 1}"),
-                                            softWrap = false,
-                                            maxLines = 1,
                                             fontSize = axisTypography.timeSizeSp.sp,
                                             lineHeight = axisTypography.timeLineHeightSp.sp,
                                             fontWeight = FontWeight.Normal,
@@ -281,9 +215,6 @@ internal fun TimetableWeekGrid(
                                         )
                                         Text(
                                             text = parts.getOrNull(1) ?: "",
-                                            modifier = Modifier.testTag("timetable_axis_end_${index + 1}"),
-                                            softWrap = false,
-                                            maxLines = 1,
                                             fontSize = axisTypography.timeSizeSp.sp,
                                             lineHeight = axisTypography.timeLineHeightSp.sp,
                                             fontWeight = FontWeight.Normal,
@@ -467,7 +398,7 @@ private fun DayColumn(
                     course = course,
                     isCurrentWeek = item.isCurrentWeek,
                     isSkipped = course.id in skippedCourseIds,
-                    // 窄列降低备注密度；保留配置字号与地点/教师字段，卡片内有界省略。
+                    // 窄列只降低标题字号/备注密度；地点和教师仍是课程基本信息，不能整块隐藏。
                     showTeacher = config.showTeacher,
                     showLocation = config.showLocation,
                     showNote = config.showNote && !narrowCard,

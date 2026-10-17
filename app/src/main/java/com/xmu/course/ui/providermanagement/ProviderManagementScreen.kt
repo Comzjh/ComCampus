@@ -16,9 +16,9 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.xmu.course.ui.components.AppTextButton as TextButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.xmu.course.ui.components.AppTopBar as TopAppBar

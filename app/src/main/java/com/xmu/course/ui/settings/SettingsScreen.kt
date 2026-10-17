@@ -1,7 +1,5 @@
 package com.xmu.course.ui.settings
 
-import com.xmu.course.ui.components.appDatePickerColors
-import com.xmu.course.ui.theme.action
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +17,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
-import com.xmu.course.ui.components.AppButton as Button
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
@@ -27,14 +25,14 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppOutlinedButton as OutlinedButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import com.xmu.course.ui.components.AppTextButton as TextButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -126,7 +124,7 @@ private fun SettingsScreenContent(
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(AppSpacing.PagePadding),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxl),
         ) {
             AppLargeTitleHeader(title = "设置", trailingContent = { TutorialToolbarAction() })
             // ---- 个人中心 ----
@@ -307,7 +305,7 @@ private fun SettingsScreenContent(
                 if (updateCheckResult is UpdateCheckResult.Available) {
                     Text(
                         text = "发现新版本 ${updateCheckResult.latestVersion}；点击「检查更新」可重新查看安装选项。",
-                        color = MaterialTheme.colorScheme.action,
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag("settings_update_available"),
                     )
@@ -378,7 +376,7 @@ private fun SettingsScreenContent(
             },
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("取消") } },
         ) {
-            DatePicker(state = pickerState, colors = appDatePickerColors())
+            DatePicker(state = pickerState)
         }
     }
 

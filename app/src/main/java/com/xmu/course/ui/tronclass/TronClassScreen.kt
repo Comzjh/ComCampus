@@ -1,6 +1,5 @@
 package com.xmu.course.ui.tronclass
 
-import com.xmu.course.ui.theme.action
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,7 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import com.xmu.course.ui.components.AppButton as Button
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,12 +28,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import com.xmu.course.ui.components.AppTextButton as TextButton
+import androidx.compose.material3.TextButton
 import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -273,13 +272,13 @@ private fun AuthenticatedContent(
             item {
                 Text(
                     "同步完成，共 ${state.lastSyncCount} 门课程",
-                    color = MaterialTheme.colorScheme.action,
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall,
                 )
                 state.lastAssignmentSyncCount?.let { count ->
                     Text(
                         "同时导入 $count 项畅课待办",
-                        color = MaterialTheme.colorScheme.action,
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

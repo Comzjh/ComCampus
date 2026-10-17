@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.xmu.course.ui.components.AppButton as Button
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -63,7 +63,7 @@ fun CourseDetailSheet(
             )
             Text(
                 text = "第 ${course.startSection}-${course.startSection + course.duration - 1} 节 · " +
-                    formatCourseWeeks(course.weeks),
+                    "周 ${course.weeks.sorted().joinToString(",")}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
@@ -156,16 +156,3 @@ private fun DetailRow(label: String, value: String) {
 }
 
 
-
-/** 仅格式化显示，不扩展或改写实际周次集合。 */
-internal fun formatCourseWeeks(weeks: Set<Int>): String {
-    val sorted = weeks.sorted()
-    if (sorted.isEmpty()) return "未设置周次"
-    if (sorted.size == 1) return "第 ${sorted.first()} 周"
-    val steps = sorted.zipWithNext { first, next -> next - first }
-    return when {
-        steps.all { it == 1 } -> "第 ${sorted.first()}–${sorted.last()} 周"
-        steps.all { it == 2 } -> "第 ${sorted.first()}–${sorted.last()} 周（${if (sorted.first() % 2 == 0) "双" else "单"}周）"
-        else -> "第 ${sorted.joinToString("、")} 周"
-    }
-}

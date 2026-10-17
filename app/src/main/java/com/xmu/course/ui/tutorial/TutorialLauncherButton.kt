@@ -1,9 +1,6 @@
 package com.xmu.course.ui.tutorial
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,13 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import com.xmu.course.ui.components.AppTextButton as TextButton
-import androidx.compose.runtime.remember
-import com.xmu.course.ui.components.appPressFeedback
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +40,6 @@ fun TutorialLauncherButton(
     onDismissHint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hintInteraction = remember { MutableInteractionSource() }
     val popupOffsetY = with(LocalDensity.current) { 52.dp.roundToPx() }
     Box(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -78,13 +72,7 @@ fun TutorialLauncherButton(
                 Surface(
                     modifier = Modifier
                         .heightIn(min = 48.dp)
-                        .appPressFeedback(hintInteraction, pressedScale = 0.975f)
-                        .clickable(
-                            interactionSource = hintInteraction,
-                            indication = androidx.compose.material3.ripple(),
-                            role = Role.Button,
-                            onClick = onClick,
-                        )
+                        .clickable(role = Role.Button, onClick = onClick)
                         .testTag("tutorial_discovery_hint"),
                     shape = MaterialTheme.shapes.small,
                     tonalElevation = 3.dp,
@@ -104,21 +92,18 @@ fun TutorialLauncherButton(
 @Composable
 fun TutorialToolbarAction(modifier: Modifier = Modifier) {
     val launcher = LocalTutorialToolbarLauncher.current ?: return
-    Box(
-        modifier = modifier.animateContentSize(animationSpec = tween(180)),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        if (launcher.isCollapsed) {
-            TutorialLauncherHandle(
-                onExpand = launcher.onExpand,
-            )
-        } else {
-            TutorialLauncherButton(
-                onClick = launcher.onStart,
-                onCollapse = launcher.onCollapse,
-                showHint = launcher.showHint,
-                onDismissHint = launcher.onDismissHint,
-            )
-        }
+    if (launcher.isCollapsed) {
+        TutorialLauncherHandle(
+            onExpand = launcher.onExpand,
+            modifier = modifier,
+        )
+    } else {
+        TutorialLauncherButton(
+            onClick = launcher.onStart,
+            onCollapse = launcher.onCollapse,
+            showHint = launcher.showHint,
+            onDismissHint = launcher.onDismissHint,
+            modifier = modifier,
+        )
     }
 }

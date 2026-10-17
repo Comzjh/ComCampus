@@ -1,6 +1,5 @@
 package com.xmu.course.ui.timetable
 
-import com.xmu.course.ui.theme.action
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import com.xmu.course.ui.components.AppTextButton as TextButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -119,7 +118,7 @@ internal fun WeekPickerSheetContent(
                         )
                         .then(
                             if (week == actualWeek && !selected) {
-                                Modifier.border(1.dp, MaterialTheme.colorScheme.action, shape)
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.primary, shape)
                             } else {
                                 Modifier
                             },

@@ -23,7 +23,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.xmu.course.data.AxisTextColor
-import com.xmu.course.ui.theme.AppColors
 import com.xmu.course.ui.theme.AppSpacing
 
 /**
@@ -40,7 +39,7 @@ internal data class AxisColorOption(
 internal val axisColorOptions: List<AxisColorOption> = listOf(
     AxisColorOption(AxisTextColor.AUTO, "自动", null, null),
     AxisColorOption(AxisTextColor.INK, "墨黑", Color(0xFF171B21), Color(0xFFE1E5EC)),
-    AxisColorOption(AxisTextColor.BRAND, "品牌蓝", AppColors.BrandAction, AppColors.BrandPrimary),
+    AxisColorOption(AxisTextColor.BRAND, "品牌蓝", Color(0xFF1A5CAB), Color(0xFF9ECAFF)),
     AxisColorOption(AxisTextColor.SLATE, "蓝灰", Color(0xFF516075), Color(0xFFB6C4DB)),
     AxisColorOption(AxisTextColor.TEAL, "青灰", Color(0xFF3E675F), Color(0xFFB5D3C9)),
 )

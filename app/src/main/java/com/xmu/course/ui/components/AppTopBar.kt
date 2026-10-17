@@ -1,6 +1,5 @@
 package com.xmu.course.ui.components
 
-import com.xmu.course.ui.theme.action
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -24,8 +23,8 @@ fun AppTopBar(
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
         containerColor = MaterialTheme.colorScheme.background,
         scrolledContainerColor = MaterialTheme.colorScheme.background,
-        navigationIconContentColor = MaterialTheme.colorScheme.action,
-        actionIconContentColor = MaterialTheme.colorScheme.action,
+        navigationIconContentColor = MaterialTheme.colorScheme.primary,
+        actionIconContentColor = MaterialTheme.colorScheme.primary,
     ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {

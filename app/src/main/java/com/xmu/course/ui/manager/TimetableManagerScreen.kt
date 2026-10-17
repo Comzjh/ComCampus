@@ -1,7 +1,5 @@
 package com.xmu.course.ui.manager
 
-import com.xmu.course.ui.components.appDatePickerColors
-import com.xmu.course.ui.theme.action
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -37,12 +35,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import com.xmu.course.ui.components.AppIconButton as IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import com.xmu.course.ui.components.AppTextButton as TextButton
+import androidx.compose.material3.TextButton
 import com.xmu.course.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -370,7 +368,7 @@ private fun TimetableCard(
                 Icon(
                     Icons.Filled.CheckCircle,
                     contentDescription = "当前使用",
-                    tint = MaterialTheme.colorScheme.action,
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -427,7 +425,6 @@ internal fun TimetableStartDatePickerDialog(
             )
             DatePicker(
                 state = pickerState,
-                colors = appDatePickerColors(),
                 title = {
                     Text("开学日期", modifier = Modifier.padding(start = 24.dp, top = 16.dp))
                 },
