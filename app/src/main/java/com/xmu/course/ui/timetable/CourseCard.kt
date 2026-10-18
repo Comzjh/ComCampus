@@ -1,30 +1,43 @@
 package com.xmu.course.ui.timetable
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.sp
 import com.xmu.course.domain.Course
 import com.xmu.course.domain.TextHorizontalAlignment
@@ -37,15 +50,13 @@ private val PALETTE = listOf(
     Color(0xFFA79FE1), Color(0xFFF49BC1), Color(0xFF8FBCFA), Color(0xFFE8C877),
 )
 
-/** 课程卡最终透明度；翘课只影响视觉，不影响布局。 */
+/** 各状态保留用户配置的透明度；翘课通过独立灰色底表达。 */
+@Suppress("UNUSED_PARAMETER") // 保留现有渲染辅助函数签名，状态不参与透明度计算。
 internal fun courseCardRenderAlpha(
     isCurrentWeek: Boolean,
     configAlpha: Float,
     isSkipped: Boolean,
-): Float {
-    val base = if (isCurrentWeek) configAlpha.coerceIn(0f, 1f) else configAlpha * 0.35f
-    return (base * if (isSkipped) 0.45f else 1f).coerceIn(0f, 1f)
-}
+): Float = configAlpha.coerceIn(0f, 1f)
 
 internal fun courseCardColor(course: Course): Color {
     if (course.color.isNotBlank()) {
@@ -53,6 +64,25 @@ internal fun courseCardColor(course: Course): Color {
             .getOrNull()?.let { return it }
     }
     return PALETTE[((course.name.hashCode() % PALETTE.size) + PALETTE.size) % PALETTE.size]
+}
+
+/** 在稳定主题底上混合底色，不写回用户颜色，不让壁纸降低文字对比。 */
+internal fun courseCardContainerColor(
+    course: Course,
+    surface: Color,
+    isCurrentWeek: Boolean,
+    cardAlpha: Float,
+    isSkipped: Boolean,
+): Color {
+    // 翘课覆盖课程配色，但不写回原颜色；取消翘课即可恢复。
+    val tint = if (isSkipped) {
+        if (surface.luminance() < 0.5f) Color(0xFF555555) else Color(0xFFCCCCCC)
+    } else {
+        courseCardColor(course).desaturateForRender()
+    }
+    return tint.copy(
+        alpha = tint.alpha * courseCardRenderAlpha(isCurrentWeek, cardAlpha, isSkipped),
+    ).compositeOver(surface)
 }
 
 /** 根据卡片底色选择对比度更高的前景色，兼顾内置色与用户自定义色。 */
@@ -104,7 +134,7 @@ private fun textAlign(value: TextHorizontalAlignment): TextAlign = when (value) 
 }
 
 /**
- * 网格中的课程卡片（超级课程表风格：高密度、彩色底、白字）。
+ * 网格中的课程卡片：高密度彩色底与独立的高对比文字。
  * 时间由左侧独立时间轴展示；卡片只显示课程名、地点、教师与备注。
  */
 @Composable
@@ -121,10 +151,12 @@ fun CourseCard(
     cardAlpha: Float = 1f,
     textHorizontalAlignment: TextHorizontalAlignment = TextHorizontalAlignment.CENTER,
     textVerticalAlignment: TextVerticalAlignment = TextVerticalAlignment.CENTER,
-    compact: Boolean = false,
+    @Suppress("UNUSED_PARAMETER") compact: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val container = (if (isSkipped) Color(0xFF8A8A8A) else courseCardColor(course)).desaturateForRender()
+    val container = courseCardContainerColor(
+        course, MaterialTheme.colorScheme.surface, isCurrentWeek, cardAlpha, isSkipped,
+    )
     val foreground = courseCardForegroundColor(container)
     // 响应式布局只改变卡片宽度，不应把正常课程的标题永久压成 8sp。
     // 保留 compact 参数兼容新版调用方，但沿用稳定版的字号上下限。
@@ -133,72 +165,161 @@ fun CourseCard(
     val alignment = horizontalAlignment(textHorizontalAlignment)
     val arrangement = verticalAlignment(textVerticalAlignment)
     val textAlign = textAlign(textHorizontalAlignment)
+    val status = listOfNotNull(
+        if (!isCurrentWeek) "非本周" else null,
+        if (isSkipped) "翘课" else null,
+    ).joinToString(" · ")
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .background(container, RoundedCornerShape(cornerRadius.dp))
-            .border(0.5.dp, foreground.copy(alpha = 0.10f), RoundedCornerShape(cornerRadius.dp))
-            .clickable(onClick = onClick)
-            .padding(4.dp)
-            .alpha(courseCardRenderAlpha(isCurrentWeek, cardAlpha, isSkipped)),
-        verticalArrangement = Arrangement.spacedBy(1.dp, arrangement),
-        horizontalAlignment = alignment,
-        content = {
+            .clip(RoundedCornerShape(cornerRadius.dp))
+            .background(container)
+            .border(
+                0.5.dp,
+                foreground.copy(alpha = 0.10f),
+                RoundedCornerShape(cornerRadius.dp),
+            )
+            .semantics {
+                contentDescription = listOfNotNull(
+                    cleanImportedCourseName(course.name),
+                    course.location.takeIf { showLocation && it.isNotBlank() },
+                    course.teacher.takeIf { showTeacher && it.isNotBlank() },
+                ).joinToString("，")
+                stateDescription = listOfNotNull(
+                    if (isCurrentWeek) "本周" else "非本周",
+                    if (isSkipped) "已标记翘课" else null,
+                ).joinToString("，")
+            }
+            .clickable(onClickLabel = "查看课程详情", onClick = onClick)
+            // 各状态保留相同内边距，小标记不与课程名重叠，也不改变整块边框。
+            .padding(start = 3.dp, end = 3.dp, top = 10.dp, bottom = 4.dp),
+    ) {
+        if (status.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(y = (-7).dp)
+                    .testTag("course_card_status_marker"),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (!isCurrentWeek) {
+                    Canvas(Modifier.size(6.dp).testTag("course_card_inactive_marker")) {
+                        val stroke = 1.dp.toPx()
+                        drawCircle(foreground, radius = (size.minDimension - stroke) / 2, style = Stroke(stroke))
+                        drawLine(foreground, center, Offset(center.x, size.height * 0.2f), stroke)
+                        drawLine(foreground, center, Offset(size.width * 0.8f, center.y), stroke)
+                    }
+                }
+                if (isSkipped) {
+                    Canvas(Modifier.size(6.dp).testTag("course_card_skipped_marker")) {
+                        val inset = 1.dp.toPx()
+                        drawLine(foreground, Offset(inset, inset), Offset(size.width - inset, size.height - inset), inset)
+                        drawLine(foreground, Offset(size.width - inset, inset), Offset(inset, size.height - inset), inset)
+                    }
+                }
+            }
+        }
+        val hasLocation = showLocation && course.location.isNotBlank()
+        val hasTeacher = showTeacher && course.teacher.isNotBlank()
+        val density = LocalDensity.current
+        val textMeasurer = rememberTextMeasurer()
+        val titleStyle = LocalTextStyle.current.copy(
+            fontSize = titleTextSize.sp, lineHeight = (titleTextSize + 1).sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        val secondaryStyle = LocalTextStyle.current.copy(
+            fontSize = secondaryText.sp, lineHeight = (secondaryText + 1).sp,
+        )
+        // Measure the same font metrics that Text uses, including fallback CJK fonts.
+        // Estimated sp-to-dp sums can leave the last metadata row partly clipped.
+        val secondaryLineHeight = with(density) {
+            textMeasurer.measure("国Ag", style = secondaryStyle).size.height.toDp()
+        }
+        val titleHeights = (1..if (course.duration <= 1) 2 else 3).map { lines ->
+            with(density) {
+                textMeasurer.measure(
+                    text = cleanImportedCourseName(course.name), style = titleStyle,
+                    maxLines = lines, overflow = TextOverflow.Ellipsis,
+                    constraints = Constraints(maxWidth = maxWidth.roundToPx().coerceAtLeast(1)),
+                ).size.height.toDp()
+            }
+        }
+        val titleLineHeight = titleHeights.first()
+        // The course name gets the first real line, including at large system font sizes.
+        // Metadata remains available in the full card description and the existing details.
+        val showLocationLine = hasLocation && maxHeight >= titleLineHeight + secondaryLineHeight + 1.dp
+        val showTeacherLine = hasTeacher && maxHeight >= titleLineHeight +
+            secondaryLineHeight * (if (showLocationLine) 2 else 1) + (if (showLocationLine) 2 else 1).dp
+        val fieldCount = (if (showLocationLine) 1 else 0) + (if (showTeacherLine) 1 else 0)
+        val titleBudget = (maxHeight - secondaryLineHeight * fieldCount - fieldCount.dp)
+            .coerceAtLeast(minOf(titleLineHeight, maxHeight))
+        val titleLines = titleHeights.indexOfLast { it <= titleBudget }.let { if (it < 0) 1 else it + 1 }
+        val usedHeight = titleHeights[titleLines - 1] + secondaryLineHeight * fieldCount + fieldCount.dp
+        val showStatus = status.isNotEmpty() && maxHeight >= usedHeight + secondaryLineHeight + 1.dp
+        // 普通列与冲突列共用层级、字号和高度预算；密度由调用方的显示设置决定。
+        val showNoteLine = showNote && course.note.isNotBlank() &&
+            maxHeight >= usedHeight + secondaryLineHeight * (if (showStatus) 2 else 1) + 2.dp
+        Column(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(1.dp, arrangement),
+            horizontalAlignment = alignment,
+        ) {
             Text(
                 // 兼容旧数据库：即使课程是在名称清洗上线前导入的，课表卡片也不再显示班号。
                 text = cleanImportedCourseName(course.name),
                 color = foreground,
-                fontSize = titleTextSize.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = if (course.duration <= 1) 2 else 3,
+                style = titleStyle,
+                maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis,
-                lineHeight = (titleTextSize + 1).sp,
                 textAlign = textAlign,
-                modifier = Modifier.testTag("course_card_name"),
+                modifier = Modifier.heightIn(max = titleBudget).testTag("course_card_name"),
             )
-            if (showLocation && course.location.isNotBlank()) {
+            if (showLocationLine) {
                 Text(
                     text = "@" + course.location,
                     color = foreground,
-                    fontSize = secondaryText.sp,
-                    lineHeight = (secondaryText + 1).sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Visible,
+                    style = secondaryStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = textAlign,
                     modifier = Modifier.testTag("course_card_location"),
                 )
             }
-            if (showTeacher && course.teacher.isNotBlank()) {
-                // 教师始终出现；窄卡里可以省略，但不允许整块消失。
+            if (showTeacherLine) {
+                // 元信息受同一高度预算约束，窄列有界省略，完整内容仍可点详情查看。
                 Text(
                     text = course.teacher,
                     color = foreground,
-                    fontSize = secondaryText.sp,
-                    lineHeight = (secondaryText + 1).sp,
+                    style = secondaryStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = textAlign,
                     modifier = Modifier.testTag("course_card_teacher"),
                 )
             }
-            // 空间不足时隐藏顺序：备注；地点/教师始终保留。
-            if (showNote && course.note.isNotBlank()) {
-                var noteOverflowed by remember(course.id, course.note) { mutableStateOf(false) }
-                if (!noteOverflowed) {
-                    Text(
-                        text = course.note,
-                        color = foreground,
-                        fontSize = secondaryText.sp,
-                        lineHeight = (secondaryText + 1).sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = textAlign,
-                        onTextLayout = { if (it.hasVisualOverflow) noteOverflowed = true },
-                    )
-                }
+            if (showStatus) {
+                Text(
+                    text = status,
+                    color = foreground,
+                    style = secondaryStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = textAlign,
+                    modifier = Modifier.testTag("course_card_status"),
+                )
             }
-        },
-    )
+            if (showNoteLine) {
+                Text(
+                    text = course.note,
+                    color = foreground,
+                    style = secondaryStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = textAlign,
+                )
+            }
+        }
+    }
 }

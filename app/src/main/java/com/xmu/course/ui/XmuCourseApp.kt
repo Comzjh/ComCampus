@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.xmu.course.ui.theme.action
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -665,7 +666,7 @@ fun XmuCourseApp(
                         val selected = selectedTab == destination
                         val tabTint by animateColorAsState(
                             targetValue = if (selected) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.action
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
@@ -714,9 +715,9 @@ fun XmuCourseApp(
                             label = { Text(destination.label, style = MaterialTheme.typography.labelSmall) },
                             alwaysShowLabel = true,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = Color.Transparent,
+                                selectedIconColor = MaterialTheme.colorScheme.action,
+                                selectedTextColor = MaterialTheme.colorScheme.action,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),

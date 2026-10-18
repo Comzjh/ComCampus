@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +28,7 @@ class ComCampusThemeTest {
             }
         }
         composeRule.waitForIdle()
-        assertEquals(0xFF1A5CAB.toInt(), primary?.toArgb())
+        assertEquals(0xFF66CCFF.toInt(), primary?.toArgb())
     }
 
     @Test
@@ -39,7 +40,16 @@ class ComCampusThemeTest {
             }
         }
         composeRule.waitForIdle()
-        assertEquals(0xFF9ECAFF.toInt(), primary?.toArgb())
+        assertEquals(0xFF66CCFF.toInt(), primary?.toArgb())
+    }
+
+    @Test
+    fun cyanFillAndForegroundActionsStayReadableInBothThemes() {
+        listOf(ComCampusLightScheme, ComCampusDarkScheme).forEach { scheme ->
+            assertTrue("filled button text", uiContrastRatio(scheme.primary, scheme.onPrimary) >= 4.5f)
+            assertTrue("foreground action on content", uiContrastRatio(scheme.action, scheme.surface) >= 4.5f)
+            assertTrue("foreground action on page", uiContrastRatio(scheme.action, scheme.background) >= 4.5f)
+        }
     }
 
     @Test

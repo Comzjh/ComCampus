@@ -1,5 +1,6 @@
 package com.xmu.course.ui.components
 
+import com.xmu.course.ui.theme.action
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,7 +69,7 @@ fun AppNavigationRow(
                 indication = LocalIndication.current,
                 onClick = onClick,
             )
-            .padding(vertical = AppSpacing.Md),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Md),
     ) {
@@ -83,7 +84,7 @@ fun AppNavigationRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.action,
                     modifier = Modifier.size(20.dp),
                 )
             }

@@ -12,6 +12,7 @@ data class GitHubReleaseDto(
     val draft: Boolean?,
     val prerelease: Boolean?,
     val assets: List<GitHubReleaseAssetDto>? = null,
+    val body: String? = null,
 )
 
 @JsonClass(generateAdapter = false)

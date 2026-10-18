@@ -28,6 +28,7 @@ sealed interface UpdateCheckResult {
         val apkUrl: String? = null,
         val apkDigest: String? = null,
         val apkName: String? = null,
+        val releaseNotes: String = "",
     ) : UpdateCheckResult
 }
 
@@ -112,6 +113,7 @@ class GitHubUpdateRepository(
                 apkUrl = apk?.browserDownloadUrl,
                 apkDigest = apk?.digest,
                 apkName = apk?.name,
+                releaseNotes = release.body.orEmpty(),
             )
             VersionComparator.compare(currentVersion, latest) == null -> UpdateCheckResult.Unknown
             else -> UpdateCheckResult.UpToDate

@@ -6,12 +6,10 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Shader
-import androidx.compose.ui.graphics.toArgb
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.compose.runtime.Composable
 import android.content.res.Configuration
-import com.xmu.course.ui.theme.BluePrimary
 
 /** 桌面小组件可用的四套纯绘制主题（不使用照片）。 */
 enum class WidgetBackgroundStyle {
@@ -88,7 +86,7 @@ object WidgetTheme {
     internal fun gradientColors(style: WidgetBackgroundStyle, isDark: Boolean): Pair<Int, Int> = when (style) {
         WidgetBackgroundStyle.XMU_BLUE ->
             if (isDark) 0xFF0E2A4D.toInt() to 0xFF124070.toInt()
-            else BluePrimary.toArgb() to 0xFF3C8BC7.toInt()
+            else 0xFF00658A.toInt() to 0xFF145E83.toInt()
         WidgetBackgroundStyle.JIAGENG ->
             if (isDark) 0xFF3B2418.toInt() to 0xFF5C3A25.toInt()
             else 0xFF8C4A2F.toInt() to 0xFFB86A45.toInt()

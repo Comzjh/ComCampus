@@ -80,7 +80,7 @@ fun AppGroupedSection(
         AppGroupedListHeader(title = title, topSpacing = 0.dp)
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = AppShapes.Card,
+            shape = AppShapes.Group,
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {

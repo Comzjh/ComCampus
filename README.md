@@ -36,9 +36,10 @@
 
 ## 下载与更新
 
-- [下载最新稳定版](https://github.com/Comzjh/ComCampus/releases/latest)；当前公开版本为 **v0.9.8**（versionCode 98）。
+- [下载最新稳定版](https://github.com/Comzjh/ComCampus/releases/latest)；当前公开版本为 **v0.9.10**（versionCode 100）。
 - Android 8.0（API 26）及以上。
 - 应用默认在启动时每 24 小时最多检查一次 GitHub Releases。发现新版后会下载 APK 并校验 SHA-256，再交给 Android 系统安装器；安装仍由用户确认。
+- 更新弹窗提供简短更新内容、GitHub详情链接及下载安装按钮；课表顶栏保持单行，翘课课程显示灰色。
 - 包名：com.comcampus.app。
 
 ## 隐私与数据

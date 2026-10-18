@@ -3,7 +3,9 @@ package com.xmu.course.ui.academic
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -20,8 +22,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,18 +34,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppLargeTitleHeader
 import com.xmu.course.ui.components.AppGroupedSection
 import com.xmu.course.ui.components.AppNavigationRow
-import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
+import com.xmu.course.ui.theme.action
 import com.xmu.course.ui.tutorial.TutorialAutoScroll
 import com.xmu.course.ui.tutorial.TutorialHost
 import com.xmu.course.ui.tutorial.TutorialTargetKey
@@ -53,7 +59,7 @@ import kotlin.math.roundToInt
 /**
  * 学业首页：学业概览与学业模拟优先，维护动作（刷新）降级到「数据与来源」。
  *
- * 视觉顺序（spec Phase AD）：概览 → 学业模拟 → GPA → 本学期 → 历史成绩 → 培养方案 → 数据与来源。
+ * 视觉顺序：概览 → 学业模拟 → GPA 摘要 → 本学期 → 历史成绩 → 培养方案 → 数据与来源。
  * 页面只消费本地聚合快照：零协议术语、零自动访问，刷新仍需用户点击。
  */
 @Composable
@@ -78,12 +84,17 @@ private fun AcademicHomeScreenContent(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(AppSpacing.PagePadding),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xl),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Lg),
     ) {
         AppLargeTitleHeader(title = "学业", trailingContent = { TutorialToolbarAction() })
 
         if (state.planStorageFailed || state.gradeStorageFailed) {
-            AppSectionCard(title = "本机缓存异常") {
+            AcademicSection(
+                title = "本机缓存异常",
+                action = {
+                    TextButton(onClick = onOpenDataSources) { Text("查看与处理") }
+                },
+            ) {
                 Text(
                     "部分学业数据本机读取失败；到「数据与来源」重新刷新，或在「数据管理」清除损坏缓存。",
                     style = MaterialTheme.typography.bodySmall,
@@ -139,17 +150,17 @@ private fun AcademicHomeScreenContent(
                 )
             }
         } else {
-            AcademicGpaCard(summary = state.gpa, onOpenGpa = onOpenGpa)
             AcademicSimulationEntryCard(
                 summary = state.gpa,
                 enrolledCount = state.simlatableCourseCount,
                 onOpenSimulation = onOpenSimulation,
             )
+            AcademicGpaCard(summary = state.gpa, onOpenGpa = onOpenGpa)
         }
 
         val snapshot = state.snapshot
         if (snapshot != null && snapshot.enrolledCourses.isNotEmpty()) {
-            AppSectionCard(
+            AcademicSection(
                 title = "本学期 · ${snapshot.semesterLabel}",
                 modifier = Modifier.testTag("academic_semester_card"),
                 action = {
@@ -158,12 +169,12 @@ private fun AcademicHomeScreenContent(
                     }
                 },
             ) {
-                val visibleCourses = snapshot.enrolledCourses.take(3)
+                val visibleCourses = snapshot.enrolledCourses.take(2)
                 visibleCourses.forEach { course ->
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = AppSpacing.Sm),
+                            .padding(vertical = AppSpacing.Xs),
                         verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
                     ) {
                         Text(
@@ -202,7 +213,7 @@ private fun AcademicHomeScreenContent(
         }
 
         overview?.let { plan ->
-            AppSectionCard(
+            AcademicSection(
                 title = "培养方案",
                 modifier = Modifier.testTag("academic_plan_card"),
                 action = {
@@ -275,7 +286,7 @@ private fun AcademicSimulationEntryCard(
     enrolledCount: Int,
     onOpenSimulation: () -> Unit,
 ) {
-    AppSectionCard(
+    AcademicSection(
         title = "学业模拟",
         modifier = Modifier.testTag("academic_simulation_card").tutorialTarget(TutorialTargetKey.ACADEMIC_SIMULATION_ENTRY),
         action = {
@@ -286,7 +297,7 @@ private fun AcademicSimulationEntryCard(
         },
     ) {
         Text(
-            "调整成绩，看看 GPA 和目标差距会怎么变化。",
+            "调整成绩，预估 GPA 与目标差距；不会修改真实成绩。",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag("academic_simulation_hint"),
         )
@@ -297,11 +308,6 @@ private fun AcademicSimulationEntryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(
-            "模拟结果不会修改真实成绩。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         if (summary.tone == AcademicGpaTone.NEEDS_CONFIRMATION) {
             AppStatusChip("有方案外课程待确认", tone = StatusTone.Info)
         }
@@ -311,40 +317,53 @@ private fun AcademicSimulationEntryCard(
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtText: String?) {
-    AppSectionCard(
+    AcademicSection(
         title = "学业概览",
+        emphasized = true,
         modifier = Modifier.testTag("academic_overview_card"),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Lg),
-        ) {
-            AcademicProgressRing(fraction = overview.progressFraction)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
-            ) {
-                Text("已修学分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    "${overview.earnedCreditsText} / ${overview.requiredCreditsText}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.testTag("academic_credits_row"),
-                )
-                overview.remainingCreditsText?.let {
+        val fontScale = LocalDensity.current.fontScale
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = AppSpacing.Xs)) {
+            val credits: @Composable () -> Unit = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                ) {
+                    Text("已修学分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "剩余 $it 学分达标",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        "${overview.earnedCreditsText} / ${overview.requiredCreditsText}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("academic_credits_row"),
                     )
+                    overview.remainingCreditsText?.let {
+                        Text(
+                            "剩余 $it 学分达标",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            if (maxWidth < 280.dp || fontScale > 1.3f) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Md)) {
+                    AcademicProgressRing(fraction = overview.progressFraction)
+                    credits()
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Md),
+                ) {
+                    AcademicProgressRing(fraction = overview.progressFraction)
+                    Box(Modifier.weight(1f)) { credits() }
                 }
             }
         }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = AppSpacing.Sm),
+                .padding(top = AppSpacing.Xs),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
         ) {
             Text(
@@ -371,7 +390,7 @@ private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtTex
             "学校页面统计时间 ${overview.sourceSnapshotAt}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = AppSpacing.Sm),
+            modifier = Modifier.padding(top = AppSpacing.Xs),
         )
         Text(
             "本机获取时间 ${planFetchedAtText ?: "未记录"}",
@@ -385,9 +404,10 @@ private fun AcademicOverviewCard(overview: AcademicOverviewRow, planFetchedAtTex
 private fun AcademicProgressRing(fraction: Float?) {
     val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val progressColor = MaterialTheme.colorScheme.primary
+    val ringSize = 56.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
     Box(contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.size(72.dp)) {
-            val stroke = 8.dp.toPx()
+        Canvas(modifier = Modifier.size(ringSize)) {
+            val stroke = 5.dp.toPx()
             drawArc(
                 color = trackColor,
                 startAngle = 0f,
@@ -417,7 +437,7 @@ private fun AcademicProgressRing(fraction: Float?) {
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) {
-    AppSectionCard(
+    AcademicSection(
         title = "GPA",
         modifier = Modifier.testTag("academic_gpa_card"),
         action = {
@@ -441,7 +461,7 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                     "需要确认 ${summary.candidateCount} 门方案外课程",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.action,
                     modifier = Modifier.testTag("academic_gpa_needs_confirmation"),
                 )
                 Text(
@@ -451,19 +471,26 @@ private fun AcademicGpaCard(summary: AcademicGpaSummary, onOpenGpa: () -> Unit) 
                 )
             }
             AcademicGpaTone.COMPUTED -> Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm)) {
-                Text("本地计算 GPA", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    summary.valueText.orEmpty(),
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.testTag("academic_gpa_value"),
-                )
-                Text(
-                    "按逐课绩点加权",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.testTag("academic_gpa_method"),
-                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Md),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+                ) {
+                    Text(
+                        summary.valueText.orEmpty(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("academic_gpa_value"),
+                    )
+                    Column {
+                        Text("本地计算 GPA", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "按逐课绩点加权",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("academic_gpa_method"),
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -526,20 +553,13 @@ private fun AcademicGpaMetric(
     testTag: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
-    ) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Xxs)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             value,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.testTag(testTag),
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -550,7 +570,7 @@ private fun AcademicHistoryPreviewCard(
     hasGrades: Boolean,
     onOpenHistory: () -> Unit,
 ) {
-    AppSectionCard(
+    AcademicSection(
         title = "历史成绩",
         modifier = Modifier.testTag("academic_history_card"),
         action = {
@@ -567,13 +587,13 @@ private fun AcademicHistoryPreviewCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            return@AppSectionCard
+            return@AcademicSection
         }
         semesters.take(3).forEach { row ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = AppSpacing.Sm),
+                    .padding(vertical = AppSpacing.Xs),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
             ) {
                 Text(row.semesterDisplay, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
@@ -614,5 +634,36 @@ fun AcademicHomeScreen(
             onOpenDataSources = onOpenDataSources,
             modifier = Modifier,
         )
+    }
+}
+
+@Composable
+private fun AcademicSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    emphasized: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AppShapes.Card,
+        color = if (emphasized) MaterialTheme.colorScheme.surfaceContainerLow else Color.Transparent,
+    ) {
+        Column(
+            modifier = Modifier.padding(if (emphasized) AppSpacing.Lg else 0.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                action?.invoke()
+            }
+            content()
+        }
     }
 }

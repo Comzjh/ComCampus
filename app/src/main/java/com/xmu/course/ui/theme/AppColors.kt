@@ -2,7 +2,9 @@ package com.xmu.course.ui.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 /**
  * ComCampus 品牌色板（Phase 9 · Apple-inspired 迁移）。
@@ -14,19 +16,20 @@ import androidx.compose.ui.graphics.Color
  */
 object AppColors {
     /** 品牌主色（与 Color.kt 中既有值保持一致）。 */
-    val BrandPrimary = Color(0xFF1A5CAB)
-    val BrandPrimaryDark = Color(0xFF9ECAFF)
-    val BrandPrimaryContainer = Color(0xFFD3E4FF)
-    val BrandPrimaryContainerDark = Color(0xFF00497D)
+    val BrandPrimary = Color(0xFF66CCFF)
+    val BrandPrimaryDark = BrandPrimary
+    val BrandPrimaryContainer = Color(0xFFDCF3FF)
+    val BrandPrimaryContainerDark = Color(0xFF07364B)
+    val BrandAction = Color(0xFF00658A)
 
     /** 页面背景浅灰蓝 + 分组卡片纯白，形成 Apple grouped-background 层级。 */
-    val PageBackground = Color(0xFFF2F2F7)
+    val PageBackground = Color(0xFFF3F5F8)
     val PageBackgroundDark = Color(0xFF000000)
     val CardSurface = Color(0xFFFFFFFF)
     val CardSurfaceDark = Color(0xFF1C1C1E)
-    val OnPage = Color(0xFF1C1C1E)
+    val OnPage = Color(0xFF172A3A)
     val OnPageDark = Color(0xFFF2F2F7)
-    val Muted = Color(0xFF636366)
+    val Muted = Color(0xFF5B6878)
     val MutedDark = Color(0xFFAEAEB2)
 
     /** 分组 surface（iOS systemGroupedBackground 式：白卡浮于浅灰页底）。 */
@@ -39,7 +42,7 @@ object AppColors {
     val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
     val SurfaceContainerLowLight = Color(0xFFFFFFFF)
     val SurfaceContainerLight = Color(0xFFFFFFFF)
-    val SurfaceContainerHighLight = Color(0xFFF2F2F7)
+    val SurfaceContainerHighLight = PageBackground
     val SurfaceContainerHighestLight = Color(0xFFE5E5EA)
 
     /** 蓝灰中性 surface ramp（Dark，以黑底和抬升的灰色内容面建立层级）。 */
@@ -54,9 +57,9 @@ object AppColors {
 
 internal val ComCampusLightScheme = lightColorScheme(
     primary = AppColors.BrandPrimary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF003247),
     primaryContainer = AppColors.BrandPrimaryContainer,
-    onPrimaryContainer = Color(0xFF001B33),
+    onPrimaryContainer = Color(0xFF003247),
     secondary = Color(0xFF516075),
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDCE5F0),
@@ -76,7 +79,7 @@ internal val ComCampusLightScheme = lightColorScheme(
     surfaceVariant = Color(0xFFEBEBF0),
     onSurfaceVariant = AppColors.Muted,
     outline = Color(0xFFC7C7CC),
-    outlineVariant = Color(0xFFDEDEE3),
+    outlineVariant = Color(0xFFDEE5ED),
     surfaceDim = AppColors.SurfaceDimLight,
     surfaceBright = AppColors.SurfaceBrightLight,
     surfaceContainerLowest = AppColors.SurfaceContainerLowestLight,
@@ -91,7 +94,7 @@ internal val ComCampusLightScheme = lightColorScheme(
 
 internal val ComCampusDarkScheme = darkColorScheme(
     primary = AppColors.BrandPrimaryDark,
-    onPrimary = Color(0xFF002E52),
+    onPrimary = Color(0xFF003247),
     primaryContainer = AppColors.BrandPrimaryContainerDark,
     onPrimaryContainer = AppColors.BrandPrimaryContainer,
     secondary = Color(0xFFB6C4DB),
@@ -133,9 +136,26 @@ internal val SuccessToneLight = StatusToneColors(Color(0xFF1E7A45), Color(0xFFD8
 internal val SuccessToneDark = StatusToneColors(Color(0xFF6ED89B), Color(0xFF143824))
 internal val WarningToneLight = StatusToneColors(Color(0xFF8A5A00), Color(0xFFFBE7B6))
 internal val WarningToneDark = StatusToneColors(Color(0xFFF2C36B), Color(0xFF3D2E0C))
-internal val InfoToneLight = StatusToneColors(Color(0xFF1A5CAB), Color(0xFFD3E4FF))
-internal val InfoToneDark = StatusToneColors(Color(0xFF9ECAFF), Color(0xFF00314F))
+internal val InfoToneLight = StatusToneColors(AppColors.BrandAction, AppColors.BrandPrimaryContainer)
+internal val InfoToneDark = StatusToneColors(AppColors.BrandPrimary, AppColors.BrandPrimaryContainerDark)
 internal val ErrorToneLight = StatusToneColors(Color(0xFFB3261E), Color(0xFFF9DEDC))
 internal val ErrorToneDark = StatusToneColors(Color(0xFFFFB4AB), Color(0xFF5F1A16))
 internal val NeutralToneLight = StatusToneColors(Color(0xFF636366), Color(0xFFEEEEF2))
 internal val NeutralToneDark = StatusToneColors(Color(0xFFAEAEB2), Color(0xFF2C2C2E))
+
+/** The cyan brand fill stays exact; foreground actions need contrast on their own surface. */
+val ColorScheme.action: Color
+    get() {
+        if (uiContrastRatio(primary, surface) >= 4.5f) return primary
+        if (primary == AppColors.BrandPrimary && uiContrastRatio(AppColors.BrandAction, surface) >= 4.5f) {
+            return AppColors.BrandAction
+        }
+        return if (uiContrastRatio(onPrimaryContainer, surface) >= 4.5f) onPrimaryContainer else onSurface
+    }
+
+internal fun uiContrastRatio(first: Color, second: Color): Float {
+    val firstLuminance = first.luminance()
+    val secondLuminance = second.luminance()
+    return (maxOf(firstLuminance, secondLuminance) + 0.05f) /
+        (minOf(firstLuminance, secondLuminance) + 0.05f)
+}

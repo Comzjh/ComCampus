@@ -1,29 +1,15 @@
 package com.xmu.course.ui.timetable
 
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,18 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.testTag
 import com.xmu.course.domain.Course
 import com.xmu.course.ui.background.TimetableBackground
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.tutorial.TutorialHost
-import com.xmu.course.ui.tutorial.TutorialToolbarAction
-import com.xmu.course.ui.tutorial.TutorialTargetKey
-import com.xmu.course.ui.tutorial.tutorialTarget
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -125,106 +105,37 @@ private fun TimetableScreenContent(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
             topBar = {
-                if (state.config.headerCompactMode) {
-                    TimetableCompactHeader(
-                        title = if (state.hasData) {
-                            val suffix = if (viewingWeek == state.actualWeek) " · 本周" else ""
-                            "第 $viewingWeek 周$suffix ▼"
-                        } else {
-                            state.timetable?.name ?: "ComCampus"
-                        },
-                        subtitle = if (state.hasData) {
-                            state.timetable?.name ?: "ComCampus"
-                        } else {
-                            "尚无数据，请先导入"
-                        },
-                        onTitleClick = { if (state.hasData) showWeekPicker = true },
-                        onAddClick = {
-                            if (state.hasData) {
-                                addPrefill = null
-                                showAddDialog = true
-                            }
-                        },
-                        onImportClick = onOpenImport,
-                        onSettingsClick = onOpenSettings,
-                        onBackToCurrent = if (state.hasData && viewingWeek != state.actualWeek) {
-                            { goToWeek(state.actualWeek) }
-                        } else {
-                            null
-                        },
-                        weekPickerEnabled = state.hasData,
-                        addEnabled = state.hasData,
-                    )
-                } else {
-                    TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = TIMETABLE_HEADER_OVERLAY_ALPHA),
-                    ),
-                    title = {
-                        Column {
-                            Text(
-                                text = if (state.hasData) {
-                                    val suffix = if (viewingWeek == state.actualWeek) " · 本周" else ""
-                                    "第 $viewingWeek 周$suffix ▼"
-                                } else {
-                                    state.timetable?.name ?: "ComCampus"
-                                },
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .clickable(enabled = state.hasData) { showWeekPicker = true }
-                                    .tutorialTarget(TutorialTargetKey.TIMETABLE_WEEK_SWITCH),
-                            )
-                            Text(
-                                text = if (state.hasData) state.timetable?.name ?: "ComCampus" else "尚无数据，请先导入",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                TimetableCompactHeader(
+                    compact = state.config.headerCompactMode,
+                    title = if (state.hasData) {
+                        val suffix = if (viewingWeek == state.actualWeek) " · 本周" else ""
+                        "第 $viewingWeek 周$suffix ▼"
+                    } else {
+                        state.timetable?.name ?: "ComCampus"
+                    },
+                    subtitle = if (state.hasData) {
+                        state.timetable?.name ?: "ComCampus"
+                    } else {
+                        "尚无数据，请先导入"
+                    },
+                    onTitleClick = { if (state.hasData) showWeekPicker = true },
+                    onAddClick = {
+                        if (state.hasData) {
+                            addPrefill = null
+                            showAddDialog = true
                         }
                     },
-                    actions = {
-                        if (state.hasData && viewingWeek != state.actualWeek) {
-                            TextButton(
-                                onClick = { goToWeek(state.actualWeek) },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.primary,
-                                ),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                            ) { Text("回到本周") }
-                        }
-                        IconButton(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.tutorialTarget(TutorialTargetKey.TIMETABLE_SETTINGS),
-                        ) {
-                            Icon(
-                                Icons.Filled.Settings,
-                                contentDescription = "课表设置",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        IconButton(onClick = onOpenImport) {
-                            Icon(
-                                Icons.Filled.CloudDownload,
-                                contentDescription = "导入课表",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        TimetableAddCourseAction(
-                            onClick = {
-                                addPrefill = null
-                                showAddDialog = true
-                            },
-                            enabled = state.hasData,
-                        )
-                        TutorialToolbarAction()
+                    onImportClick = onOpenImport,
+                    onSettingsClick = onOpenSettings,
+                    onBackToCurrent = if (state.hasData && viewingWeek != state.actualWeek) {
+                        { goToWeek(state.actualWeek) }
+                    } else {
+                        null
                     },
-                    )
-                }
+                    weekPickerEnabled = state.hasData,
+                    addEnabled = state.hasData,
+                )
+
             },
         ) { innerPadding ->
         when {

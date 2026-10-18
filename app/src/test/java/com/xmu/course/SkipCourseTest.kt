@@ -120,7 +120,7 @@ class SkipCourseTest {
     fun skipCourseRenderAlphaTest() {
         val skippedAlpha = courseCardRenderAlpha(isCurrentWeek = true, configAlpha = 1f, isSkipped = true)
         val normalAlpha = courseCardRenderAlpha(isCurrentWeek = true, configAlpha = 1f, isSkipped = false)
-        assertTrue(skippedAlpha in 0.35f..0.5f)
+        assertEquals(1f, skippedAlpha) // Skipped state uses gray, not a faded course color.
         assertEquals(1f, normalAlpha)
     }
 }

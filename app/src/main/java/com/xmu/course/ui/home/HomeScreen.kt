@@ -2,6 +2,9 @@ package com.xmu.course.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,8 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,10 +30,11 @@ import com.xmu.course.domain.todo.TodoDatePolicy
 import com.xmu.course.ui.components.AppEmptyState
 import com.xmu.course.ui.components.AppLargeTitleHeader
 import com.xmu.course.ui.components.AppListDivider
-import com.xmu.course.ui.components.AppSectionCard
 import com.xmu.course.ui.components.AppStatusChip
 import com.xmu.course.ui.components.StatusTone
 import com.xmu.course.ui.theme.AppSpacing
+import com.xmu.course.ui.theme.AppShapes
+import com.xmu.course.ui.theme.action
 import com.xmu.course.ui.timetable.TimetableUiState
 import com.xmu.course.ui.timetable.TimetableViewModel
 import com.xmu.course.ui.todo.TodoViewModel
@@ -95,7 +100,7 @@ private fun TodayFocusCard(
     onOpenTimetable: () -> Unit,
     onOpenImport: () -> Unit,
 ) {
-    AppSectionCard(
+    HomeSection(
         title = when {
             !state.hasData -> "今日课程"
             today.current != null -> "现在"
@@ -163,14 +168,22 @@ private fun TodayFocusCard(
 
 @Composable
 private fun FocusCourseRow(course: WidgetCourse, status: String, tone: StatusTone, tag: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Sm).testTag(tag),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(tag),
+        shape = AppShapes.Card,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(AppSpacing.Lg),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
         ) {
+            Text(
+                homeTimeRangeLabel(course, includeLocation = false),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.action,
+            )
             Text(
                 course.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -178,21 +191,19 @@ private fun FocusCourseRow(course: WidgetCourse, status: String, tone: StatusTon
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                homeTimeRangeLabel(course),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (course.location.isNotBlank()) {
+                Text(course.location, style = MaterialTheme.typography.bodyMedium)
+            }
+            AppStatusChip(label = status, tone = tone)
         }
-        AppStatusChip(label = status, tone = tone)
     }
 }
 
 @Composable
 private fun SupportingCourseRow(label: String?, course: WidgetCourse, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.Sm),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.Xs),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
     ) {
         AppListDivider(inset = AppSpacing.Xxs)
         Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
@@ -222,7 +233,7 @@ private fun UrgentTodoCard(
     onOpenTodo: () -> Unit,
     onAddTodo: () -> Unit,
 ) {
-    AppSectionCard(
+    HomeSection(
         title = "需要处理",
         action = {
             TextButton(onClick = onAddTodo, modifier = Modifier.testTag("home_add_todo")) {
@@ -254,7 +265,10 @@ private fun UrgentTodoCard(
                         modifier = Modifier.testTag("home_todo_count"),
                     )
                 }
-                dashboard.urgentTodos.forEach { todo -> TodoPreviewRow(todo, nowMillis) }
+                dashboard.urgentTodos.forEachIndexed { index, todo ->
+                    if (index > 0) AppListDivider(inset = AppSpacing.Xxs)
+                    TodoPreviewRow(todo, nowMillis)
+                }
                 if (dashboard.todoAvailability == HomeTodoAvailability.PARTIAL_ERROR) {
                     Text(
                         "待办更新失败，正在显示已有数据",
@@ -272,6 +286,7 @@ private fun UrgentTodoCard(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
     val deadline = todo.deadline?.let {
         TodoDatePolicy.effectiveDeadline(
@@ -295,7 +310,7 @@ private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
         ) {
             Text(
                 todo.title,
@@ -304,18 +319,14 @@ private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Sm),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs),
             ) {
                 Text(
                     WidgetRepository.formatTodoDeadline(deadline, nowMillis, isDateOnly = isDateOnly),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
                 deadlineDisplay.text?.let { label ->
                     AppStatusChip(
@@ -329,8 +340,29 @@ private fun TodoPreviewRow(todo: TodoFeatureModel, nowMillis: Long) {
     }
 }
 
-private fun homeTimeRangeLabel(course: WidgetCourse): String {
+private fun homeTimeRangeLabel(course: WidgetCourse, includeLocation: Boolean = true): String {
     val end = String.format(Locale.US, "%02d:%02d", course.endMinuteOfDay / 60, course.endMinuteOfDay % 60)
     val time = "${course.startTime}–$end"
-    return if (course.location.isBlank()) time else "$time · ${course.location}"
+    return if (!includeLocation || course.location.isBlank()) time else "$time · ${course.location}"
+}
+
+/** Open sections keep the course focus distinct from the supporting lists. */
+@Composable
+private fun HomeSection(
+    title: String,
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            action?.invoke()
+        }
+        content()
+    }
 }

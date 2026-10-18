@@ -68,6 +68,17 @@ class UpdateSettingsTest {
         )
     }
 
+    @Test
+    fun `release notes are carried from GitHub to the update prompt`() = runTest {
+        val notes = "## 更新内容\n- 修复课表顶栏\n- 翘课课程显示灰色"
+        val repository = GitHubUpdateRepository(
+            FakeApi(Response.success(release("v1.2.4").copy(body = notes))), FakeSettings(),
+        )
+        val result = repository.check("1.2.3", manual = true) as UpdateCheckResult.Available
+        assertEquals(notes, result.releaseNotes)
+        assertEquals("https://github.com/Comzjh/ComCampus/releases/tag/v1.2.4", result.releaseUrl)
+    }
+
     private fun release(tag: String) = GitHubReleaseDto(
         tagName = tag,
         htmlUrl = "https://github.com/Comzjh/ComCampus/releases/tag/$tag",

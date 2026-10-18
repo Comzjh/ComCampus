@@ -4,13 +4,24 @@ import android.content.Intent
 import android.os.Build
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.core.content.FileProvider
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.xmu.course.ui.components.AppButton as Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.xmu.course.ui.components.AppTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.xmu.course.data.update.UpdateCheckResult
@@ -30,6 +41,16 @@ fun UpdateDialog(
     val context = LocalContext.current
     val downloadedApk = downloadedApkPath?.let(::File)
     val canDownload = update.apkUrl != null && update.apkDigest != null
+    var installAfterDownload by remember(update.latestVersion) { mutableStateOf(false) }
+    val summary = remember(update.releaseNotes) { summarizeReleaseNotes(update.releaseNotes) }
+    LaunchedEffect(downloadedApkPath, downloadError, installAfterDownload) {
+        if (installAfterDownload && (downloadedApk != null || downloadError)) {
+            installAfterDownload = false
+            if (downloadedApk != null) runCatching {
+                launchUpdateInstaller(context, downloadedApk, update.latestVersion)
+            }
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = AppShapes.Section,
@@ -39,14 +60,23 @@ fun UpdateDialog(
         tonalElevation = 0.dp,
         title = { Text("发现新版本") },
         text = {
-            Text(
-                buildString {
-                    append("当前版本：${update.currentVersion}\n最新版本：${update.latestVersion}")
-                    if (downloading) append("\n正在从 GitHub 下载并校验安装包…")
-                    if (downloadedApk != null) append("\n安装包已准备好，继续后将由 Android 安装器确认安装。")
-                    if (downloadError) append("\n下载或完整性校验失败，请从 GitHub Release 页面下载。")
-                },
-            )
+            Column(
+                modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("当前版本：${update.currentVersion}\n最新版本：${update.latestVersion}")
+                Text("更新内容", style = MaterialTheme.typography.titleSmall)
+                Text(summary)
+                TextButton(onClick = {
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl))) }
+                }) { Text("GitHub 详情") }
+                val status = buildString {
+                    if (downloading) append("正在下载更新…")
+                    if (downloadedApk != null) append("安装包已准备好，继续安装。")
+                    if (downloadError) append("下载或校验失败，可重试或前往 GitHub 下载。")
+                }
+                if (status.isNotEmpty()) Text(status)
+            }
         },
         confirmButton = {
             Button(
@@ -55,7 +85,10 @@ fun UpdateDialog(
                         downloadedApk != null -> runCatching {
                             launchUpdateInstaller(context, downloadedApk, update.latestVersion)
                         }
-                        canDownload -> onDownload()
+                        canDownload -> {
+                            installAfterDownload = true
+                            onDownload()
+                        }
                         else -> runCatching {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
                         }
@@ -75,6 +108,23 @@ fun UpdateDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("稍后") } },
     )
+}
+
+/** Keep the prompt short; the linked release page retains the full Markdown notes. */
+internal fun summarizeReleaseNotes(notes: String): String {
+    val summary = notes.lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it != "---" }
+        .map {
+            it.replace(Regex("^([-*+]\\s+|\\d+[.)]\\s+)"), "")
+                .replace(Regex("\\[([^]]+)]\\([^)]+\\)"), "$1")
+                .replace("**", "").replace("`", "")
+        }
+        .filter { it.isNotBlank() }
+        .take(3)
+        .joinToString("\n") { "• $it" }
+    if (summary.isBlank()) return "暂无更新说明，可查看 GitHub 详情。"
+    return if (summary.length > 180) summary.take(179).trimEnd() + "…" else summary
 }
 
 private fun launchUpdateInstaller(context: android.content.Context, apk: File, expectedVersion: String) {

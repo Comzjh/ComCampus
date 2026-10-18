@@ -72,7 +72,7 @@ class TimetableWeekReturnScreenTest {
         composeRule.onNodeWithTag("timetable_empty").assertIsDisplayed()
         composeRule.runOnIdle { source.states.value = pagerTestState().copy(courses = emptyList()) }
         composeRule.onNodeWithTag("timetable_no_courses").assertIsDisplayed()
-        composeRule.onNodeWithText("第 3 周 · 本周 ▼").assertIsDisplayed()
+        composeRule.onNodeWithText("第3周 · 本周").assertIsDisplayed()
         composeRule.runOnIdle { source.states.value = pagerTestState() }
 
         assertVisibleWeek(3, current = true)
@@ -156,7 +156,7 @@ class TimetableWeekReturnScreenTest {
     private fun assertVisibleWeek(week: Int, current: Boolean = false) {
         composeRule.onNodeWithTag("timetable_week_page_$week").assertIsDisplayed()
         val suffix = if (current) " · 本周" else ""
-        composeRule.onNodeWithText("第 $week 周$suffix ▼").assertIsDisplayed()
+        composeRule.onNodeWithText("第${week}周$suffix").assertIsDisplayed()
     }
 }
 

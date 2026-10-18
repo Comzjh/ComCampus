@@ -13,10 +13,11 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.xmu.course.ui.components.AppIconButton as IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -88,7 +89,7 @@ fun ProfileScreen(
         AppGroupedSection(title = "支持 ComCampus") {
             AppNavigationRow(
                 title = "支持项目维护",
-                description = "自愿支持，帮助持续维护这个开源项目",
+                description = "自愿支持项目持续维护",
                 icon = Icons.Filled.Favorite,
                 onClick = onOpenSupport,
                 modifier = Modifier.testTag("profile_support"),
@@ -97,8 +98,8 @@ fun ProfileScreen(
         AppGroupedSection(title = "数据与隐私") {
             AppNavigationRow(
                 title = "数据来源",
-                description = "查看数据来源状态",
-                icon = Icons.Filled.Storage,
+                description = "查看各来源状态",
+                icon = Icons.Filled.CloudDownload,
                 onClick = onOpenProviderManagement,
                 modifier = Modifier.testTag("profile_provider_management"),
             )
